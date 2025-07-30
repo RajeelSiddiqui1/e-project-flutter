@@ -17,7 +17,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () => Get.to(() => const ProfileScreen()),
-            icon: const Icon(Icons.person_outline),
+            icon: const Icon(Icons.person_3_outlined),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
