@@ -1,5 +1,11 @@
+import 'dart:developer';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebaseproject/user/auth/forgotpassword.dart';
 import 'package:firebaseproject/user/auth/signup.dart';
+import 'package:firebaseproject/user/home/home.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,82 +15,87 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  void loginUser() async {
+    if (!_formKey.currentState!.validate()) return;
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+      Get.offAll(() => const HomeScreen());
+    } on FirebaseAuthException catch (e) {
+      log('Login error: $e');
+      Get.snackbar(
+        'Login Failed',
+        e.message ?? 'An unknown error occurred.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Login'),
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: SingleChildScrollView(
+      appBar: AppBar(title: const Text('Login'), 
+           automaticallyImplyLeading: false,
+      centerTitle: true),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Email Field
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                Icon(Icons.lock_open_rounded, size: 80, color: Theme.of(context).primaryColor),
+                const SizedBox(height: 30),
+                TextFormField(
+                  controller: emailController,
                   keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
+                  validator: (value) => (value == null || !GetUtils.isEmail(value)) ? 'Enter a valid email' : null,
                 ),
                 const SizedBox(height: 20),
-                
-                // Password Field
-                TextField(
-                  obscureText: true,
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     hintText: 'Password',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
+                  validator: (value) => (value == null || value.length < 6) ? 'Password must be at least 6 characters' : null,
                 ),
                 const SizedBox(height: 30),
-
-                // Login Button
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Add logic
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Login',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
+                  child: ElevatedButton(onPressed: loginUser, child: const Text('Login')),
                 ),
-
-                const SizedBox(height: 20),
-
-                // Sign Up Redirect Text
+                const SizedBox(height: 10),
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(context,MaterialPageRoute(builder:(context) => SignupScreen()));
-                  },
-                  child: const Text(
-                    "Don't have an account? Sign Up",
-                    style: TextStyle(color: Colors.blue),
-                  ),
+                  onPressed: () => Get.to(() => const ForgotPasswordScreen()),
+                  child: const Text("Forgot Password?"),
+                ),
+                TextButton(
+                  onPressed: () => Get.to(() => const SignupScreen()),
+                  child: const Text("Don't have an account? Sign Up"),
                 ),
               ],
             ),

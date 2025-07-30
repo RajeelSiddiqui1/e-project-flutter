@@ -1,4 +1,10 @@
+import 'dart:developer';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebaseproject/user/home/home.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -8,134 +14,83 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController ageController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
+    ageController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  void signUpUser() async {
+    if (!_formKey.currentState!.validate()) return;
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      String uid = userCredential.user!.uid;
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set({
+        'uid': uid,
+        'firstName': firstNameController.text.trim(),
+        'lastName': lastNameController.text.trim(),
+        'age': ageController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'email': emailController.text.trim(),
+      });
+
+      Get.offAll(() => const HomeScreen());
+    } on FirebaseAuthException catch (e) {
+      log('Signup error: $e');
+      Get.snackbar(
+        'Signup Failed',
+        e.message ?? 'An error occurred.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Sign Up'),
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Sign Up'), 
+           automaticallyImplyLeading: false,
+      centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // First Name
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'First Name',
-                    prefixIcon: const Icon(Icons.person_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Last Name
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Last Name',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Email
-                TextField(
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Password
-                TextField(
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Password',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Age
-                TextField(
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'Age',
-                    prefixIcon: const Icon(Icons.calendar_today),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Phone
-                TextField(
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: 'Phone Number',
-                    prefixIcon: const Icon(Icons.phone),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 25),
-
-                // Signup Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Signup logic
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Sign Up',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Redirect to Login
-                TextButton(
-                  onPressed: () {
-                    // TODO: Navigate to Login
-                  },
-                  child: const Text(
-                    'Already have an account? Login',
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ),
-              ],
-            ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(controller: firstNameController, decoration: const InputDecoration(hintText: 'First Name', prefixIcon: Icon(Icons.person_outline)), validator: (v) => v!.isEmpty ? 'Required' : null),
+              const SizedBox(height: 15),
+              TextFormField(controller: lastNameController, decoration: const InputDecoration(hintText: 'Last Name', prefixIcon: Icon(Icons.person)), validator: (v) => v!.isEmpty ? 'Required' : null),
+              const SizedBox(height: 15),
+              TextFormField(controller: emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.email_outlined)), validator: (v) => GetUtils.isEmail(v!) ? null : 'Invalid email'),
+              const SizedBox(height: 15),
+              TextFormField(controller: passwordController, obscureText: true, decoration: const InputDecoration(hintText: 'Password', prefixIcon: Icon(Icons.lock_outline_rounded)), validator: (v) => v!.length < 6 ? 'Min 6 characters' : null),
+              const SizedBox(height: 15),
+              TextFormField(controller: ageController, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Age', prefixIcon: Icon(Icons.cake_outlined)), validator: (v) => v!.isEmpty ? 'Required' : null),
+              const SizedBox(height: 15),
+              TextFormField(controller: phoneController, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'Phone Number', prefixIcon: Icon(Icons.phone_outlined)), validator: (v) => v!.isEmpty ? 'Required' : null),
+              const SizedBox(height: 25),
+              SizedBox(width: double.infinity, child: ElevatedButton(onPressed: signUpUser, child: const Text('Sign Up'))),
+              TextButton(onPressed: () => Get.back(), child: const Text('Already have an account? Login')),
+            ],
           ),
         ),
       ),
