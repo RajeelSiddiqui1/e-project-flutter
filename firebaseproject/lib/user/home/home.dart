@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebaseproject/admin/category/categories.dart';
 import 'package:firebaseproject/user/auth/login.dart';
 import 'package:firebaseproject/user/profile/profile.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ class HomeScreen extends StatelessWidget {
             onPressed: () => Get.to(() => const ProfileScreen()),
             icon: const Icon(Icons.person_3_outlined),
           ),
+          
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -37,10 +39,11 @@ class HomeScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             Text(FirebaseAuth.instance.currentUser?.email ?? 'No email found'),
-            
+             
           ],
           
         ),
+        
       ),
     );
   }

@@ -1,11 +1,13 @@
 import 'dart:developer';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebaseproject/admin/category/auth/login.dart';
+import 'package:firebaseproject/admin/home/home.dart';
 import 'package:firebaseproject/user/auth/forgotpassword.dart';
 import 'package:firebaseproject/user/auth/signup.dart';
 import 'package:firebaseproject/user/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,11 +32,25 @@ class _LoginScreenState extends State<LoginScreen> {
   void loginUser() async {
     if (!_formKey.currentState!.validate()) return;
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-      Get.offAll(() => const HomeScreen());
+
+      final uid = credential.user?.uid;
+      if (uid == null) throw Exception("User ID not found");
+
+      final adminDoc = await FirebaseFirestore.instance.collection("Admins").doc(uid).get();
+      final userDoc = await FirebaseFirestore.instance.collection("Users").doc(uid).get();
+
+      if (adminDoc.exists) {
+        Get.offAll(() => const AdminHomeScreen());
+      } else if (userDoc.exists) {
+        Get.offAll(() => const HomeScreen());
+      } else {
+        Get.snackbar("Login Failed", "User not found in database.");
+        FirebaseAuth.instance.signOut();
+      }
     } on FirebaseAuthException catch (e) {
       log('Login error: $e');
       Get.snackbar(
@@ -50,9 +66,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login'), 
-           automaticallyImplyLeading: false,
-      centerTitle: true),
+      appBar: AppBar(
+        title: const Text('Login'),
+        automaticallyImplyLeading: false,
+        centerTitle: true
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -95,7 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 TextButton(
                   onPressed: () => Get.to(() => const SignupScreen()),
-                  child: const Text("Don't have an account? Sign Up"),
+                  child: const Text("signup?"),
+                ),
+                TextButton(
+                  onPressed: () => Get.to(() => const AdminLoginScreen()),
+                  child: const Text("signup?"),
                 ),
               ],
             ),
