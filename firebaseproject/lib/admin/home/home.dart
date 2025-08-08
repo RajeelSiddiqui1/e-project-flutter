@@ -2,6 +2,7 @@
 
 import 'package:firebaseproject/admin/category/auth/login.dart';
 import 'package:firebaseproject/admin/category/categories.dart';
+import 'package:firebaseproject/admin/product/products.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
@@ -32,6 +33,10 @@ class AdminHomeScreen extends StatelessWidget {
             const Text('Welcome, Admin!'),
            TextButton(
                   onPressed: () => Get.to(() => const CategoriesScreen()),
+                  child: const Text("Categories"),
+                ),
+           TextButton(
+                  onPressed: () => Get.to(() => const ProductsScreen()),
                   child: const Text("Categories"),
                 ),
           ],

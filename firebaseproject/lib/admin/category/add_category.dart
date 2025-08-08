@@ -1,12 +1,7 @@
-
-
-// ignore_for_file: avoid_unnecessary_containers, avoid_print
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebaseproject/admin/category/categories.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebaseproject/admin/category/categories.dart';
 
 class AddCategoryScreen extends StatefulWidget {
   const AddCategoryScreen({super.key});
@@ -16,62 +11,88 @@ class AddCategoryScreen extends StatefulWidget {
 }
 
 class _AddCategoryScreenState extends State<AddCategoryScreen> {
-  TextEditingController titleController = TextEditingController();
-  TextEditingController detailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController detailController = TextEditingController();
 
-    // User? userId = FirebaseAuth.instance.currentUser;
+  Future<void> addCategory() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      await FirebaseFirestore.instance.collection("categories").doc().set({
+        "createdAt": DateTime.now(),
+        "title": titleController.text.trim(),
+        "detail": detailController.text.trim(),
+      });
+      Get.offAll(() => const CategoriesScreen());
+      Get.snackbar("Success", "Category added successfully",
+          backgroundColor: Colors.green, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar("Error", "Failed to add category",
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    detailController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Create detail"),
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text("Add Category"),
+        backgroundColor: Colors.teal,
+        centerTitle: true,
       ),
-      // ignore: duplicate_ignore
-      // ignore: avoid_unnecessary_containers
-      body: Container(
-        margin: EdgeInsets.all(30),
-        child: Column(
-          children: [
-            Container(
-              child: TextFormField(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Icon(Icons.category, size: 80, color: Theme.of(context).primaryColor),
+              const SizedBox(height: 30),
+
+              TextFormField(
                 controller: titleController,
-                decoration: InputDecoration(hintText: "Title"),
+                decoration: const InputDecoration(
+                  hintText: "Title",
+                  prefixIcon: Icon(Icons.title),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.isEmpty ? "Enter title" : null,
               ),
-            ),
-              Container(
-              child: TextFormField(
+              const SizedBox(height: 20),
+
+              TextFormField(
                 controller: detailController,
-                maxLines: null,
-                decoration: InputDecoration(hintText: "Add detail"),
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: "Detail",
+                  prefixIcon: Icon(Icons.description),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.isEmpty ? "Enter detail" : null,
               ),
-            ),
-            ElevatedButton(onPressed: () async{
-              var title = titleController.text.trim();
-               var detail = detailController.text.trim();
+              const SizedBox(height: 30),
 
-               if(title != "" && detail != "")
-               {
-                try{
-                 await FirebaseFirestore.instance.collection("categories").doc().set({
-                    "createdAt":DateTime.now() ,
-                    "title":title,
-                    "detail":detail,
-                    // "userId":userId/?.uid
-                  });
-                  Get.to(()=>CategoriesScreen());
-                }
-                catch(e)
-                {
-                  print("Error $e");
-                }
-               }
-
-
-            }, child: Text("Add detail"))
-          ],
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: addCategory,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    textStyle: const TextStyle(fontSize: 18),
+                  ),
+                  child: const Text("Add Category"),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

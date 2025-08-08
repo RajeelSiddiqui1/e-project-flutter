@@ -15,15 +15,15 @@ class EditCategoryScreen extends StatefulWidget {
 
 class _EditCategoryScreenState extends State<EditCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController titleController = TextEditingController();
-  final TextEditingController detailController = TextEditingController();
+  late TextEditingController titleController;
+  late TextEditingController detailController;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    titleController.text = widget.category['title'] ?? '';
-    detailController.text = widget.category['detail'] ?? '';
+    titleController = TextEditingController(text: widget.category['title'] ?? '');
+    detailController = TextEditingController(text: widget.category['detail'] ?? '');
   }
 
   @override
@@ -33,27 +33,24 @@ class _EditCategoryScreenState extends State<EditCategoryScreen> {
     super.dispose();
   }
 
-  void updateCategory() async {
+  Future<void> updateCategory() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
 
     try {
-      final data = {
+      await FirebaseFirestore.instance.collection('categories').doc(widget.docId).update({
         'title': titleController.text.trim(),
         'detail': detailController.text.trim(),
         'createdAt': widget.category['createdAt'] ?? DateTime.now(),
-      };
+      });
 
-      await FirebaseFirestore.instance.collection('categories').doc(widget.docId).update(data);
-      Get.to(() => const CategoriesScreen());
+      Get.offAll(() => const CategoriesScreen());
+      Get.snackbar("Success", "Category updated successfully",
+          backgroundColor: Colors.green, colorText: Colors.white);
     } catch (e) {
-      Get.snackbar(
-        'Update Failed',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.redAccent,
-        colorText: Colors.white,
-      );
+      Get.snackbar("Error", "Failed to update category",
+          backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -64,53 +61,55 @@ class _EditCategoryScreenState extends State<EditCategoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Category'),
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.blue[800],
-        elevation: 4,
+        backgroundColor: Colors.teal,
         centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Edit Category Details',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
+                    Icon(Icons.edit, size: 80, color: Theme.of(context).primaryColor),
+                    const SizedBox(height: 30),
+
                     TextFormField(
                       controller: titleController,
                       decoration: const InputDecoration(
                         labelText: 'Title',
+                        prefixIcon: Icon(Icons.title),
                         border: OutlineInputBorder(),
                         hintText: 'Enter title',
                       ),
-                      validator: (value) => value!.isEmpty ? 'Title is required' : null,
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Title is required' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+
                     TextFormField(
                       controller: detailController,
-                      maxLines: 5,
+                      maxLines: 4,
                       decoration: const InputDecoration(
                         labelText: 'Detail',
+                        prefixIcon: Icon(Icons.description),
                         border: OutlineInputBorder(),
                         hintText: 'Enter detail',
                       ),
-                      validator: (value) => value!.isEmpty ? 'Detail is required' : null,
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Detail is required' : null,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: updateCategory,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[700],
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(fontSize: 18),
                         ),
                         child: const Text('Update Category'),
                       ),

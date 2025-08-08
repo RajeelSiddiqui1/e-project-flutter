@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebaseproject/admin/category/edit_category.dart';
 import 'package:firebaseproject/admin/category/add_category.dart';
+import 'package:firebaseproject/admin/category/edit_category.dart';
 import 'package:firebaseproject/admin/category/category_detail.dart';
 
 class CategoriesScreen extends StatefulWidget {
@@ -15,7 +15,6 @@ class CategoriesScreen extends StatefulWidget {
 class _CategoriesScreenState extends State<CategoriesScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Delete category from Firestore and image from local file if exists
   Future<void> _deleteCategory(String docId, String? imagePath) async {
     try {
       await _firestore.collection('categories').doc(docId).delete();
@@ -48,9 +47,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         title: const Text('Categories'),
         automaticallyImplyLeading: false,
         backgroundColor: Colors.teal,
+        centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('categories').snapshots(), // 🔁 Fetch all categories
+        stream: _firestore.collection('categories').orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -85,14 +85,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         ? Image.file(
                             File(imagePath),
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(Icons.broken_image, size: 50);
-                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.broken_image, size: 50),
                           )
                         : const Icon(Icons.category, size: 50),
                   ),
                   title: Text(
-                    category['name'] ?? 'No Name',
+                    category['title'] ?? 'No Title',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
@@ -105,16 +104,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => EditCategoryScreen(
-                                docId: docId,
-                                category: category,
-                              ),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => EditCategoryScreen(
+                              docId: docId,
+                              category: category,
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
@@ -122,14 +119,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       ),
                     ],
                   ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            CategoryDetailScreen(category: category),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => CategoryDetailScreen(category: category),
+                    ),
+                  ),
                 ),
               );
             },
@@ -137,13 +131,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const AddCategoryScreen(),
-            ),
-          );
-        },
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const AddCategoryScreen()),
+        ),
         backgroundColor: Colors.teal,
         child: const Icon(Icons.add),
       ),

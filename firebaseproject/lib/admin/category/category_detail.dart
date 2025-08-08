@@ -12,9 +12,9 @@ class CategoryDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(category['title']),
-        automaticallyImplyLeading: false,
+        title: Text(category['title'] ?? 'Category Detail'),
         backgroundColor: Colors.teal,
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -27,11 +27,8 @@ class CategoryDetailScreen extends StatelessWidget {
                 child: Image.file(
                   File(imagePath),
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(
-                      child: Icon(Icons.broken_image, size: 100, color: Colors.grey),
-                    );
-                  },
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Center(child: Icon(Icons.broken_image, size: 100, color: Colors.grey)),
                 ),
               )
             else
@@ -48,7 +45,7 @@ class CategoryDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    category['title'],
+                    category['title'] ?? '',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -62,7 +59,7 @@ class CategoryDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    category['detail'],
+                    category['detail'] ?? '',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],
