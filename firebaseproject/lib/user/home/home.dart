@@ -74,23 +74,25 @@ class HomeScreen extends StatelessWidget {
                     itemCount: categories.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
                     itemBuilder: (context, index) {
-                      final category = categories[index].data() as Map<String, dynamic>;
+                      final category =
+                          categories[index].data() as Map<String, dynamic>;
                       final categoryId = categories[index].id;
                       final imagePath = category['imagePath'] as String?;
                       final title = category['title'] ?? 'No Title';
 
                       return GestureDetector(
                         onTap: () {
-                          Get.to(() => CategoryProductsScreen(
-                                categoryId: categoryId,
-                                categoryTitle: title,
-                              ));
+                          Get.to(
+                            () => CategoryProductsScreen(
+                              categoryId: categoryId,
+                              categoryTitle: title,
+                            ),
+                          );
                         },
                         child: Container(
                           width: 110,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            color: Colors.teal.shade100,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -105,9 +107,12 @@ class HomeScreen extends StatelessWidget {
                                         height: 70,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.broken_image, size: 50),
+                                            const Icon(
+                                              Icons.broken_image,
+                                              size: 50,
+                                            ),
                                       )
-                                    : const Icon(Icons.category, size: 70, color: Colors.teal),
+                                    : const Icon(Icons.category, size: 70),
                               ),
                               const SizedBox(height: 6),
                               Text(
@@ -115,7 +120,9 @@ class HomeScreen extends StatelessWidget {
                                 maxLines: 2,
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -150,15 +157,17 @@ class HomeScreen extends StatelessWidget {
                   final products = snapshot.data!.docs;
 
                   return GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.65,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.65,
+                        ),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
-                      final product = products[index].data() as Map<String, dynamic>;
+                      final product =
+                          products[index].data() as Map<String, dynamic>;
                       final productId = products[index].id;
                       final imagePath = product['imagePath'] as String?;
                       final name = product['name'] ?? 'No Name';
@@ -166,13 +175,17 @@ class HomeScreen extends StatelessWidget {
                       final discount = product['discount'] ?? 0;
                       final description = product['description'] ?? '';
 
-                      String shortDescription = description.split(' ').length > 10
-                          ? description.split(' ').sublist(0, 10).join(' ') + '...'
+                      String shortDescription =
+                          description.split(' ').length > 10
+                          ? description.split(' ').sublist(0, 10).join(' ') +
+                                '...'
                           : description;
 
                       return Card(
                         elevation: 3,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Column(
@@ -181,67 +194,83 @@ class HomeScreen extends StatelessWidget {
                               Expanded(
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: imagePath != null && imagePath.isNotEmpty
+                                  child:
+                                      imagePath != null && imagePath.isNotEmpty
                                       ? Image.file(
                                           File(imagePath),
                                           width: double.infinity,
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
-                                              const Icon(Icons.broken_image, size: 50),
+                                              const Icon(
+                                                Icons.broken_image,
+                                                size: 50,
+                                              ),
                                         )
                                       : const Icon(Icons.inventory, size: 50),
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              if (discount > 0)
-                                Text('Discount: $discount%', style: const TextStyle(color: Colors.red)),
+                              if (discount > 0) Text('Discount: $discount%'),
                               Text('\$${price.toString()}'),
                               const SizedBox(height: 4),
                               Text(
                                 shortDescription,
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                style: const TextStyle(fontSize: 12),
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   ElevatedButton(
                                     onPressed: () {
-                                      Get.to(() => ProductDetailScreen(
-                                            productId: productId,
-                                            product: product,
-                                          ));
+                                      Get.to(
+                                        () => ProductDetailScreen(
+                                          productId: productId,
+                                          product: product,
+                                        ),
+                                      );
                                     },
                                     child: const Text('Details'),
                                     style: ElevatedButton.styleFrom(
                                       minimumSize: const Size(80, 35),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
                                     ),
                                   ),
                                   ElevatedButton.icon(
                                     onPressed: () async {
                                       if (user == null) {
-                                        Get.snackbar('Error', 'Login required',
-                                            backgroundColor: Colors.red, colorText: Colors.white);
+                                        Get.snackbar('Error', 'Login required');
                                         return;
                                       }
-                                      await _firestore.collection('wishlist').add({
-                                        'userId': user.uid,
-                                        'productId': productId,
-                                        'product': product,
-                                        'addedAt': DateTime.now(),
-                                      });
-                                      Get.snackbar('Success', 'Added to wishlist',
-                                          backgroundColor: Colors.green, colorText: Colors.white);
+                                      await _firestore
+                                          .collection('wishlist')
+                                          .add({
+                                            'userId': user.uid,
+                                            'productId': productId,
+                                            'createdAt': DateTime.now(),
+                                          });
+                                      Get.snackbar(
+                                        'Success',
+                                        'Added to wishlist',
+                                      );
                                     },
                                     icon: const Icon(Icons.favorite_border),
                                     label: const Text('Wishlist'),
                                     style: ElevatedButton.styleFrom(
                                       minimumSize: const Size(100, 35),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      backgroundColor: Colors.pinkAccent,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -262,7 +291,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-
 class CategoryProductsScreen extends StatelessWidget {
   final String categoryId;
   final String categoryTitle;
@@ -279,11 +307,7 @@ class CategoryProductsScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(categoryTitle),
-        centerTitle: true,
-        backgroundColor: Colors.teal,
-      ),
+      appBar: AppBar(title: Text(categoryTitle), centerTitle: true),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('products')
@@ -294,7 +318,9 @@ class CategoryProductsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No products found in this category.'));
+            return const Center(
+              child: Text('No products found in this category.'),
+            );
           }
 
           final products = snapshot.data!.docs;
@@ -323,7 +349,9 @@ class CategoryProductsScreen extends StatelessWidget {
 
               return Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
@@ -344,15 +372,17 @@ class CategoryProductsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 4),
-                      if (discount > 0)
-                        Text('Discount: $discount%', style: const TextStyle(color: Colors.red)),
+                      if (discount > 0) Text('Discount: $discount%'),
                       Text('\$${price.toString()}'),
                       const SizedBox(height: 4),
                       Text(
                         shortDescription,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -360,39 +390,41 @@ class CategoryProductsScreen extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              Get.to(() => ProductDetailScreen(
-                                    productId: productId,
-                                    product: product,
-                                  ));
+                              Get.to(
+                                () => ProductDetailScreen(
+                                  productId: productId,
+                                  product: product,
+                                ),
+                              );
                             },
                             child: const Text('Details'),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size(80, 35),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                             ),
                           ),
                           ElevatedButton.icon(
                             onPressed: () async {
                               if (user == null) {
-                                Get.snackbar('Error', 'Login required',
-                                    backgroundColor: Colors.red, colorText: Colors.white);
+                                Get.snackbar('Error', 'Login required');
                                 return;
                               }
                               await _firestore.collection('wishlist').add({
                                 'userId': user.uid,
                                 'productId': productId,
-                                'product': product,
-                                'addedAt': DateTime.now(),
+                                'createdAt': DateTime.now(),
                               });
-                              Get.snackbar('Success', 'Added to wishlist',
-                                  backgroundColor: Colors.green, colorText: Colors.white);
+                              Get.snackbar('Success', 'Added to wishlist');
                             },
                             icon: const Icon(Icons.favorite_border),
                             label: const Text('Wishlist'),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size(100, 35),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              backgroundColor: Colors.pinkAccent,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                             ),
                           ),
                         ],
@@ -408,5 +440,3 @@ class CategoryProductsScreen extends StatelessWidget {
     );
   }
 }
-
-
