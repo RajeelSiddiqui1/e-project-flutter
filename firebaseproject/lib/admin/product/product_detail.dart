@@ -6,16 +6,31 @@ class ProductDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = product['imageUrl'] as String?;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(product['name'] ?? 'Product Detail'),
-        backgroundColor: Colors.teal,
+        automaticallyImplyLeading: false,
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: ListView(
           children: [
+            if (imageUrl != null && imageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  imageUrl,
+                  height: 250,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, size: 100),
+                ),
+              ),
+            const SizedBox(height: 20),
             Text(
               product['name'] ?? '',
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),

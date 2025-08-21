@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -34,11 +33,11 @@ class CartScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Cart'),
-         automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore.collection('cart')
-            .where('userId', isEqualTo: user!.uid) // filter by userId
+            .where('userId', isEqualTo: user!.uid)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -69,17 +68,22 @@ class CartScreen extends StatelessWidget {
                     final data = doc.data() as Map<String, dynamic>;
                     final quantity = data['quantity'] ?? 1;
                     final price = (data['price'] ?? 0).toDouble();
+                    final imageUrl = data['imageUrl'] as String? ?? '';
 
                     return Card(
                       elevation: 3,
                       child: ListTile(
-                        leading: (data['imagePath'] != null && data['imagePath'].isNotEmpty)
+                        leading: (imageUrl.isNotEmpty)
                             ? SizedBox(
                                 width: 70,
                                 height: 70,
-                                child: Image.file(
-                                  File(data['imagePath']),
+                                child: Image.network(
+                                  imageUrl,
                                   fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Center(child: CircularProgressIndicator());
+                                  },
                                   errorBuilder: (_, __, ___) =>
                                       const Icon(Icons.broken_image, size: 50),
                                 ),
@@ -124,7 +128,7 @@ class CartScreen extends StatelessWidget {
                                 iconSize: 22,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(Icons.delete),
                                 onPressed: () {
                                   removeItem(doc.id);
                                 },

@@ -11,11 +11,11 @@ class CartIconWithBadge extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      // If user not logged in, just show cart icon without badge
+      // User not logged in — just show bigger cart icon
       return IconButton(
-        icon: const Icon(Icons.shopping_cart),
+        icon: const Icon(Icons.shopping_cart, size: 32),
         onPressed: () {
-          // maybe redirect to login or show cart anyway
+          // Handle navigation or show message for login
         },
       );
     }
@@ -37,7 +37,7 @@ class CartIconWithBadge extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             IconButton(
-              icon: const Icon(Icons.shopping_cart),
+              icon: const Icon(Icons.shopping_cart, size: 32),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => CartScreen()),
@@ -46,23 +46,23 @@ class CartIconWithBadge extends StatelessWidget {
             ),
             if (cartCount > 0)
               Positioned(
-                right: 4,
-                top: 4,
+                right: 6,
+                top: 6,
                 child: Container(
-                  padding: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
+                    minWidth: 20,
+                    minHeight: 20,
                   ),
                   child: Text(
                     cartCount.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
@@ -8,27 +7,31 @@ class CategoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imagePath = category['imagePath'] as String?;
+    final imageUrl = category['imageUrl'] as String?;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(category['title'] ?? 'Category Detail'),
-        backgroundColor: Colors.teal,
+        automaticallyImplyLeading: false,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (imagePath != null && imagePath.isNotEmpty)
+            if (imageUrl != null && imageUrl.isNotEmpty)
               SizedBox(
                 width: double.infinity,
                 height: 300,
-                child: Image.file(
-                  File(imagePath),
+                child: Image.network(
+                  imageUrl,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) =>
                       const Center(child: Icon(Icons.broken_image, size: 100, color: Colors.grey)),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(child: CircularProgressIndicator());
+                  },
                 ),
               )
             else

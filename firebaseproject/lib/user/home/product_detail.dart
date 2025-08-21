@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -25,11 +24,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _ratingSubmitted = false;
   final TextEditingController _commentController = TextEditingController();
 
-  // For fetching existing ratings & comments
   List<Map<String, dynamic>> _ratingsComments = [];
   double _averageRating = 0;
 
-  // Load ratings/comments for product from Firestore
   Future<void> _loadRatings() async {
     final snapshot = await _firestore
         .collection('ratings')
@@ -44,7 +41,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       for (var doc in docs) {
         final data = doc.data();
         final ratingValue = data['rating'];
-        totalRating += (ratingValue is int) ? ratingValue : (ratingValue is double ? ratingValue.toInt() : 0);
+        totalRating += (ratingValue is int)
+            ? ratingValue
+            : (ratingValue is double ? ratingValue.toInt() : 0);
         tempList.add(data);
       }
 
@@ -60,7 +59,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  // Save rating and comment to Firestore
   Future<void> _submitRatingAndComment() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -77,7 +75,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     try {
       final ratingsCollection = _firestore.collection('ratings');
 
-      // Check if user already rated this product
       final querySnapshot = await ratingsCollection
           .where('productId', isEqualTo: widget.productId)
           .where('userId', isEqualTo: user.uid)
@@ -85,7 +82,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        // Update existing rating/comment
         final docId = querySnapshot.docs.first.id;
         await ratingsCollection.doc(docId).update({
           'rating': _userRating,
@@ -93,15 +89,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'updatedAt': DateTime.now(),
         });
       } else {
-        // Add new rating/comment
         await ratingsCollection.add({
           'userId': user.uid,
           'productId': widget.productId,
           'rating': _userRating,
           'comment': _commentController.text.trim(),
           'createdAt': DateTime.now(),
-          'userFirstName': user.displayName?.split(' ')[0] ?? 'User', // Fetch first name
-          'userLastName': user.displayName!.split(' ').length > 1 ? user.displayName!.split(' ')[1] : '', // Fetch last name
+          'userFirstName': user.displayName?.split(' ')[0] ?? 'User',
+          'userLastName': user.displayName!.split(' ').length > 1
+              ? user.displayName!.split(' ')[1]
+              : '',
         });
       }
 
@@ -121,7 +118,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  // Add to cart method unchanged
   Future<void> addToCart() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -154,7 +150,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'price': widget.product['price'],
           'quantity': quantity,
           'totalPrice': quantity * (widget.product['price'] ?? 0),
-          'imagePath': widget.product['imagePath'] ?? '',
+          'imageUrl': widget.product['imageUrl'] ?? '',
           'addedAt': DateTime.now(),
         });
       }
@@ -177,7 +173,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _loadRatings();
   }
 
-  // Helper to build star icons for average rating
   Widget _buildAverageRatingStars(double rating) {
     List<Widget> stars = [];
     for (int i = 1; i <= 5; i++) {
@@ -189,7 +184,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Row(children: stars);
   }
 
-  // Helper to build star selector for user rating input
   Widget _buildUserRatingStars() {
     List<Widget> stars = [];
     for (int i = 1; i <= 5; i++) {
@@ -203,7 +197,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           onPressed: () {
             setState(() {
               _userRating = i;
-              _ratingSubmitted = false; // Reset comment input when rating changes
+              _ratingSubmitted = false;
             });
           },
         ),
@@ -215,7 +209,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final imagePath = product['imagePath'] as String?;
+    final imageUrl = product['imageUrl'] as String?;
 
     return Scaffold(
       appBar: AppBar(
@@ -226,12 +220,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         padding: const EdgeInsets.all(20.0),
         child: ListView(
           children: [
-            if (imagePath != null && imagePath.isNotEmpty)
+            if (imageUrl != null && imageUrl.isNotEmpty)
               SizedBox(
                 height: 300,
-                child: Image.file(
-                  File(imagePath),
+                child: Image.network(
+                  imageUrl,
                   fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(child: CircularProgressIndicator());
+                  },
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.broken_image, size: 100),
                 ),
@@ -251,7 +249,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
             const SizedBox(height: 5),
 
-            // Show Average Rating
             Row(
               children: [
                 const Text("Average Rating: ",
@@ -273,7 +270,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             Text(product['description'] ?? ''),
             const SizedBox(height: 30),
 
-            // Quantity Selector
             Row(
               children: [
                 const Text("Quantity: ", style: TextStyle(fontSize: 18)),
@@ -310,7 +306,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
             const SizedBox(height: 40),
 
-            // RATING SECTION
             const Text(
               "Rate this product:",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -336,7 +331,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
             const SizedBox(height: 30),
 
-            // DISPLAY EXISTING RATINGS & COMMENTS
             const Text(
               "Reviews & Comments:",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -366,7 +360,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           const SizedBox(width: 10),
                           Text(
                             '${rc['userFirstName'] ?? 'User'} ${rc['userLastName'] ?? ''}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ],
                       ),
@@ -381,10 +376,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       Text(
                         rc['createdAt'] != null
                             ? (rc['createdAt'] is Timestamp
-                                ? (rc['createdAt'] as Timestamp).toDate().toLocal().toString().substring(0, 19)
+                                ? (rc['createdAt'] as Timestamp)
+                                    .toDate()
+                                    .toLocal()
+                                    .toString()
+                                    .substring(0, 19)
                                 : rc['createdAt'].toString())
                             : '',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),

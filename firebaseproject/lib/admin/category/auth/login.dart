@@ -1,12 +1,9 @@
-// admin_login_screen.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebaseproject/admin/home/home.dart';
 import 'package:firebaseproject/user/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -29,8 +26,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       final uid = credential.user?.uid;
       if (uid == null) throw Exception("User ID not found");
 
-      final adminDoc = await FirebaseFirestore.instance.collection('Admins').doc(uid).get();
-      final userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+      final adminDoc =
+          await FirebaseFirestore.instance.collection('Admins').doc(uid).get();
+      final userDoc =
+          await FirebaseFirestore.instance.collection('Users').doc(uid).get();
 
       if (adminDoc.exists) {
         Get.offAll(() => const AdminHomeScreen());
@@ -48,26 +47,48 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Admin Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: "Email"),
-            ),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: login,
-              child: const Text("Login as Admin"),
-            ),
-          ],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.admin_panel_settings, size: 80),
+              const SizedBox(height: 24),
+              const Text(
+                "Admin Login",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: "Email",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Password",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: login,
+                  child: const Text("Login"),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
