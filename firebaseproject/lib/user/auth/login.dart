@@ -1,38 +1,30 @@
-import 'dart:developer';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebaseproject/admin/category/auth/login.dart';
-import 'package:firebaseproject/admin/home/home.dart';
 import 'package:firebaseproject/user/auth/forgotpassword.dart';
 import 'package:firebaseproject/user/auth/signup.dart';
-import 'package:firebaseproject/user/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../home/home.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  bool _obscurePassword = true;
   final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  void loginUser() async {
+  Future<void> loginWithEmail() async {
     if (!_formKey.currentState!.validate()) return;
     try {
-      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
@@ -40,85 +32,97 @@ class _LoginScreenState extends State<LoginScreen> {
       final uid = credential.user?.uid;
       if (uid == null) throw Exception("User ID not found");
 
-      final adminDoc = await FirebaseFirestore.instance.collection("Admins").doc(uid).get();
       final userDoc = await FirebaseFirestore.instance.collection("Users").doc(uid).get();
-
-      if (adminDoc.exists) {
-        Get.offAll(() => const AdminHomeScreen());
-      } else if (userDoc.exists) {
+      if (userDoc.exists) {
         Get.offAll(() => const HomeScreen());
       } else {
-        Get.snackbar("Login Failed", "User not found in database.");
-        FirebaseAuth.instance.signOut();
+        Get.snackbar("Login Failed", "User not found in database");
+        _auth.signOut();
       }
     } on FirebaseAuthException catch (e) {
-      log('Login error: $e');
-      Get.snackbar(
-        'Login Failed',
-        e.message ?? 'An unknown error occurred.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.redAccent,
-        colorText: Colors.white,
-      );
+      Get.snackbar("Login Failed", e.message ?? 'Unknown error', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    try {
+      final UserCredential userCredential = await _auth.signInWithPopup(GoogleAuthProvider());
+      final user = userCredential.user;
+      if (user == null) throw Exception("Google sign in failed");
+
+      final userDoc = FirebaseFirestore.instance.collection("Users").doc(user.uid);
+      final docSnapshot = await userDoc.get();
+      if (!docSnapshot.exists) {
+        final emailQuery = await FirebaseFirestore.instance
+            .collection("Users")
+            .where("email", isEqualTo: user.email)
+            .get();
+
+        if (emailQuery.docs.isEmpty) {
+          await userDoc.set({
+            "name": user.displayName ?? "User",
+            "email": user.email,
+            "createdAt": DateTime.now(),
+          });
+        }
+      }
+
+      Get.offAll(() => const HomeScreen());
+    } catch (e) {
+      Get.snackbar("Google Sign-In Failed", e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-        automaticallyImplyLeading: false,
-        centerTitle: true
-      ),
+      appBar: AppBar(title: const Text("Login"), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.lock_open_rounded, size: 80, color: Theme.of(context).primaryColor),
                 const SizedBox(height: 30),
                 TextFormField(
                   controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
-                  validator: (value) => (value == null || !GetUtils.isEmail(value)) ? 'Enter a valid email' : null,
+                  decoration: const InputDecoration(hintText: "Email", prefixIcon: Icon(Icons.email_outlined)),
+                  validator: (value) => (value == null || !GetUtils.isEmail(value)) ? "Enter valid email" : null,
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    hintText: 'Password',
+                    hintText: "Password",
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword)),
                   ),
-                  validator: (value) => (value == null || value.length < 6) ? 'Password must be at least 6 characters' : null,
+                  validator: (value) => (value == null || value.length < 6) ? "Password must be 6+ chars" : null,
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(onPressed: loginUser, child: const Text('Login')),
+                  child: ElevatedButton(onPressed: loginWithEmail, child: const Text("Login")),
                 ),
                 const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => Get.to(() => const ForgotPasswordScreen()),
-                  child: const Text("Forgot Password?"),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: loginWithGoogle,
+                    icon: const Icon(Icons.login),
+                    label: const Text("Sign in with Google"),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                  ),
                 ),
-                TextButton(
-                  onPressed: () => Get.to(() => const SignupScreen()),
-                  child: const Text("signup?"),
-                ),
-                TextButton(
-                  onPressed: () => Get.to(() => const AdminLoginScreen()),
-                  child: const Text("signup?"),
-                ),
+                const SizedBox(height: 10),
+                TextButton(onPressed: () => Get.to(() => const ForgotPasswordScreen()), child: const Text("Forgot Password?")),
+                TextButton(onPressed: () => Get.to(() => const SignupScreen()), child: const Text("Signup")),
+                TextButton(onPressed: () => Get.to(() => const AdminLoginScreen()), child: const Text("login admin")),
               ],
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -10,165 +11,163 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TextEditingController _searchController = TextEditingController();
 
-  List<Map<String, dynamic>> _allOrders = [];
-  List<Map<String, dynamic>> _filteredOrders = [];
-  bool _isLoading = false;
+  Stream<QuerySnapshot> _getOrders() {
+    User? user = _auth.currentUser;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadOrders();
-    _searchController.addListener(() {
-      final query = _searchController.text.toLowerCase();
-      if (query.isEmpty) {
-        setState(() => _filteredOrders = List.from(_allOrders));
-      } else {
-        setState(() {
-          _filteredOrders = _allOrders.where((order) {
-            final items = order['items'] as List<dynamic>? ?? [];
-            return items.any((item) =>
-                (item['name'] as String).toLowerCase().contains(query));
-          }).toList();
-        });
-      }
-    });
-  }
-
-  Future<void> _loadOrders() async {
-    setState(() => _isLoading = true);
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() {
-          _allOrders = [];
-          _filteredOrders = [];
-          _isLoading = false;
-        });
-        return;
-      }
-      final snapshot = await _firestore
-          .collection('orders')
-          .where('userId', isEqualTo: user.uid)
-          .orderBy('orderDate', descending: true)
-          .get();
-      final orders = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['docId'] = doc.id;
-        return data;
-      }).toList();
-      setState(() {
-        _allOrders = List<Map<String, dynamic>>.from(orders);
-        _filteredOrders = List.from(_allOrders);
-      });
-    } catch (e) {
-      setState(() {
-        _allOrders = [];
-        _filteredOrders = [];
-      });
-    } finally {
-      setState(() => _isLoading = false);
+    if (user == null) {
+      return const Stream.empty();
     }
+
+    return _firestore
+        .collection("orders")
+        .where("userId", isEqualTo: user.uid)
+        .snapshots();
   }
 
-  Widget _buildOrderItem(Map<String, dynamic> order) {
-    final orderId = order['orderId'] ?? 'N/A';
-    final status = order['status'] ?? 'Unknown';
-    final totalAmount = order['totalAmount']?.toDouble() ?? 0.0;
-    final orderDate = order['orderDate'] is Timestamp
-        ? (order['orderDate'] as Timestamp).toDate()
-        : DateTime.tryParse(order['orderDate']?.toString() ?? '') ?? DateTime.now();
-    final items = order['items'] as List<dynamic>? ?? [];
-
+  Widget _buildOrderItem(DocumentSnapshot order) {
+    final items = order['items'] as List<dynamic>;
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ExpansionTile(
-        title: Text('Order ID: $orderId', style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('Status: $status'),
-        childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text(
+          "Order ID: ${order['orderId']}",
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: Text(
+          "Amount: ${order['totalAmount']} \nDate: ${DateFormat.yMMMd().format((order['orderDate'] as Timestamp).toDate())}",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         children: [
-          Text('Order Date: ${orderDate.toLocal().toString().substring(0, 19)}'),
-          const SizedBox(height: 8),
-          ...items.map((item) {
-            final name = item['name'] ?? 'Product';
-            final qty = item['quantity'] ?? 1;
-            final price = item['price']?.toDouble() ?? 0.0;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(child: Text(name)),
-                  Text('x$qty'),
-                  const SizedBox(width: 8),
-                  Text('\$${(price * qty).toStringAsFixed(2)}'),
-                ],
-              ),
-            );
-          }).toList(),
-          const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text('Total: \$${totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            ],
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Customer: ${order['name']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Email: ${order['userEmail']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Phone: ${order['phone']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Address: ${order['address']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Delivery: ${order['deliveryOption']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Delivery Fee: ${order['deliveryFee']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Payment: ${order['paymentMethod']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text("Status: ${order['status']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text(
+                  "Date: ${DateFormat.yMMMd().add_jm().format((order['orderDate'] as Timestamp).toDate())}",
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                Text("Items:", style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...items.map((item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Name: ${item['name']}", style: Theme.of(context).textTheme.bodyMedium),
+                          Text("Price: ${item['price']}", style: Theme.of(context).textTheme.bodyMedium),
+                          Text("Quantity: ${item['quantity']}", style: Theme.of(context).textTheme.bodyMedium),
+                          Text("Total: ${item['totalPrice']}", style: Theme.of(context).textTheme.bodyMedium),
+                        ],
+                      ),
+                    )),
+                const SizedBox(height: 8),
+                Text("Items Total: ${order['itemsAmount']}", style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 8),
+                Text(
+                  "Total Amount: ${order['totalAmount']}",
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onRefresh() async {
-    await _loadOrders();
+  Widget _buildShimmer() {
+    return ListView.builder(
+      itemCount: 5,
+      itemBuilder: (context, index) => Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: ListTile(
+          title: Container(
+            width: double.infinity,
+            height: 16,
+            color: Colors.grey[300],
+          ),
+          subtitle: Container(
+            width: double.infinity,
+            height: 12,
+            color: Colors.grey[300],
+            margin: const EdgeInsets.only(top: 8),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Orders'),
+        title: const Text("My Orders"),
+        automaticallyImplyLeading: false,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search orders by product name',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
-              ),
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredOrders.isEmpty
-                    ? const Center(child: Text('No orders found'))
-                    : RefreshIndicator(
-                        onRefresh: _onRefresh,
-                        child: ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          itemCount: _filteredOrders.length,
-                          itemBuilder: (context, index) {
-                            final order = _filteredOrders[index];
-                            return _buildOrderItem(order);
-                          },
-                        ),
-                      ),
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.delayed(const Duration(seconds: 1));
+        },
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _getOrders(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return _buildShimmer();
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.shopping_bag_outlined, size: 64),
+                    const SizedBox(height: 16),
+                    Text(
+                      "No orders found",
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Place your first order to get started!",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final orders = snapshot.data!.docs;
+
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: orders.length,
+              itemBuilder: (context, index) => _buildOrderItem(orders[index]),
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart'; // For shimmer effect
+import 'package:get/get.dart';
+import 'package:firebaseproject/user/home/product_detail.dart'; // Assuming this exists
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -20,33 +22,48 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int quantity = 1;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  int _userRating = 0; // user rating (1-5)
+  int _userRating = 0;
   bool _ratingSubmitted = false;
   final TextEditingController _commentController = TextEditingController();
-
   List<Map<String, dynamic>> _ratingsComments = [];
-  double _averageRating = 0;
+  double _averageRating = 0.0;
+  bool _isLoading = true;
 
-  Future<void> _loadRatings() async {
-    final snapshot = await _firestore
+  @override
+  void initState() {
+    super.initState();
+    _loadRatingsAndUserData();
+  }
+
+  Future<void> _loadRatingsAndUserData() async {
+    setState(() => _isLoading = true);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final snapshot = await _firestore
+          .collection('ratings')
+          .where('productId', isEqualTo: widget.productId)
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      _ratingSubmitted = snapshot.docs.isNotEmpty;
+    }
+
+    final ratingsSnapshot = await _firestore
         .collection('ratings')
         .where('productId', isEqualTo: widget.productId)
         .get();
 
-    final docs = snapshot.docs;
-
+    final docs = ratingsSnapshot.docs;
     if (docs.isNotEmpty) {
       int totalRating = 0;
       List<Map<String, dynamic>> tempList = [];
       for (var doc in docs) {
         final data = doc.data();
-        final ratingValue = data['rating'];
-        totalRating += (ratingValue is int)
-            ? ratingValue
-            : (ratingValue is double ? ratingValue.toInt() : 0);
+        totalRating += ((data['rating'] is int)
+            ? data['rating'] as int
+            : (data['rating'] is double ? (data['rating'] as double).toInt() : 0));
         tempList.add(data);
       }
-
       setState(() {
         _ratingsComments = tempList;
         _averageRating = totalRating / docs.length;
@@ -54,81 +71,81 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     } else {
       setState(() {
         _ratingsComments = [];
-        _averageRating = 0;
+        _averageRating = 0.0;
       });
     }
+    setState(() => _isLoading = false);
   }
 
   Future<void> _submitRatingAndComment() async {
+    if (_ratingSubmitted || _userRating == 0) return;
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      Get.snackbar('Error', 'Please login to submit rating',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
-      return;
-    }
-    if (_userRating == 0) {
-      Get.snackbar('Error', 'Please select a rating',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
-      return;
+    if (user == null) return;
+
+    // Fetch or derive firstName and lastName
+    String firstName = "User";
+    String lastName = "";
+    if (user.displayName != null && user.displayName!.isNotEmpty) {
+      final nameParts = user.displayName!.split(" ");
+      firstName = nameParts[0];
+      lastName = nameParts.length > 1 ? nameParts.sublist(1).join(" ") : "";
+    } else {
+      // Optionally fetch from Users collection if set up
+      final userDoc = await _firestore.collection('Users').doc(user.uid).get();
+      if (userDoc.exists) {
+        firstName = userDoc.data()?['firstName'] ?? "User";
+        lastName = userDoc.data()?['lastName'] ?? "";
+      }
     }
 
     try {
-      final ratingsCollection = _firestore.collection('ratings');
-
-      final querySnapshot = await ratingsCollection
-          .where('productId', isEqualTo: widget.productId)
-          .where('userId', isEqualTo: user.uid)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final docId = querySnapshot.docs.first.id;
-        await ratingsCollection.doc(docId).update({
-          'rating': _userRating,
-          'comment': _commentController.text.trim(),
-          'updatedAt': DateTime.now(),
-        });
-      } else {
-        await ratingsCollection.add({
-          'userId': user.uid,
-          'productId': widget.productId,
-          'rating': _userRating,
-          'comment': _commentController.text.trim(),
-          'createdAt': DateTime.now(),
-          'userFirstName': user.displayName?.split(' ')[0] ?? 'User',
-          'userLastName': user.displayName!.split(' ').length > 1
-              ? user.displayName!.split(' ')[1]
-              : '',
-        });
-      }
-
-      setState(() {
-        _ratingSubmitted = true;
-        _commentController.clear();
-        _userRating = 0;
-      });
-
-      await _loadRatings();
-
-      Get.snackbar('Success', 'Rating and comment submitted',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+      await Get.dialog(
+        AlertDialog(
+          title: const Text('Confirm Rating'),
+          content: const Text('Are you sure you want to submit this rating?'),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Get.back();
+                final ratingsCollection = _firestore.collection('ratings');
+                await ratingsCollection.add({
+                  'userId': user.uid,
+                  'productId': widget.productId,
+                  'rating': _userRating,
+                  'comment': _commentController.text.trim(),
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'userFirstName': firstName,
+                  'userLastName': lastName,
+                });
+                setState(() {
+                  _ratingSubmitted = true;
+                  _commentController.clear();
+                  _userRating = 0;
+                });
+                await _loadRatingsAndUserData();
+                Get.snackbar('Success', 'Rating submitted', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to submit rating: $e',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+      Get.snackbar('Error', 'Failed to submit rating: $e', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
     }
   }
 
   Future<void> addToCart() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      Get.snackbar('Error', 'You must be logged in to add to cart',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
-      return;
-    }
+    if (user == null) return;
 
     try {
       final cartCollection = _firestore.collection('cart');
-
       final cartItemQuery = await cartCollection
           .where('productId', isEqualTo: widget.productId)
           .where('userId', isEqualTo: user.uid)
@@ -151,59 +168,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'quantity': quantity,
           'totalPrice': quantity * (widget.product['price'] ?? 0),
           'imageUrl': widget.product['imageUrl'] ?? '',
-          'addedAt': DateTime.now(),
+          'addedAt': FieldValue.serverTimestamp(),
         });
       }
-
-      Get.snackbar('Success', 'Added to cart',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white);
+      Get.snackbar('Success', 'Added to cart', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to add to cart: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
+      Get.snackbar('Error', 'Failed to add to cart: $e', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadRatings();
-  }
-
-  Widget _buildAverageRatingStars(double rating) {
-    List<Widget> stars = [];
-    for (int i = 1; i <= 5; i++) {
-      stars.add(Icon(
-        i <= rating ? Icons.star : Icons.star_border,
+  Widget _buildStars(double rating) {
+    return Row(
+      children: List.generate(5, (i) => Icon(
+        i < rating ? Icons.star : Icons.star_border,
         color: Colors.amber,
-      ));
-    }
-    return Row(children: stars);
+        size: 20,
+      )),
+    );
   }
 
   Widget _buildUserRatingStars() {
-    List<Widget> stars = [];
-    for (int i = 1; i <= 5; i++) {
-      stars.add(
-        IconButton(
-          icon: Icon(
-            i <= _userRating ? Icons.star : Icons.star_border,
-            color: Colors.amber,
-            size: 30,
-          ),
-          onPressed: () {
-            setState(() {
-              _userRating = i;
-              _ratingSubmitted = false;
-            });
-          },
-        ),
-      );
-    }
-    return Row(children: stars);
+    return Row(
+      children: List.generate(5, (i) => IconButton(
+        icon: Icon(i < _userRating ? Icons.star : Icons.star_border, color: Colors.amber, size: 30),
+        onPressed: _ratingSubmitted ? null : () {
+          setState(() => _userRating = i + 1);
+        },
+      )),
+    );
   }
 
   @override
@@ -213,187 +205,180 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        title: Text(product['name'] ?? 'Product Detail', style: Theme.of(context).textTheme.titleLarge),
         automaticallyImplyLeading: false,
-        title: Text(product['name'] ?? 'Product Detail'),
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: ListView(
-          children: [
-            if (imageUrl != null && imageUrl.isNotEmpty)
-              SizedBox(
-                height: 300,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.broken_image, size: 100),
-                ),
-              )
-            else
-              Container(
-                height: 300,
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Icon(Icons.inventory, size: 100, color: Colors.grey),
-                ),
-              ),
-            const SizedBox(height: 20),
-            Text(
-              product['name'] ?? '',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 5),
-
-            Row(
-              children: [
-                const Text("Average Rating: ",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                _buildAverageRatingStars(_averageRating),
-                const SizedBox(width: 10),
-                Text(_averageRating.toStringAsFixed(1)),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-            Text("Price: \$${product['price']}"),
-            if (product['discount'] != null)
-              Text("Discount: ${product['discount']}%"),
-            const SizedBox(height: 10),
-            Text("Make: ${product['make']}"),
-            const SizedBox(height: 20),
-            Text(product['description'] ?? ''),
-            const SizedBox(height: 30),
-
-            Row(
-              children: [
-                const Text("Quantity: ", style: TextStyle(fontSize: 18)),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () {
-                    if (quantity > 1) {
-                      setState(() {
-                        quantity--;
-                      });
-                    }
-                  },
-                ),
-                Text(quantity.toString(), style: const TextStyle(fontSize: 18)),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () {
-                    setState(() {
-                      quantity++;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            ElevatedButton(
-              onPressed: addToCart,
-              child: const Text("Add to Cart"),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            const Text(
-              "Rate this product:",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            _buildUserRatingStars(),
-
-            if (_userRating > 0) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: _commentController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Leave a comment (optional)',
-                ),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _submitRatingAndComment,
-                child: const Text("Submit Rating & Comment"),
-              ),
-            ],
-
-            const SizedBox(height: 30),
-
-            const Text(
-              "Reviews & Comments:",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-
-            if (_ratingsComments.isEmpty)
-              const Text("No reviews yet. Be the first!"),
-
-            for (var rc in _ratingsComments) ...[
-              Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: () async => setState(() => _loadRatingsAndUserData()),
+        child: _isLoading
+            ? const _ShimmerDetail()
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            height: 250,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (c, child, p) => p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            errorBuilder: (c, e, s) => const Icon(Icons.book_outlined, size: 100),
+                          )
+                        : const Icon(Icons.book_outlined, size: 100),
+                  ).animate().fadeIn(duration: 500.ms),
+                  const SizedBox(height: 16),
+                  Text(
+                    product['name'] ?? '',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildStars(_averageRating),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Price: \$${product['price']?.toStringAsFixed(2) ?? '0.00'}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    product['description'] ?? '',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      const Text('Quantity:', style: TextStyle(fontWeight: FontWeight.bold)),
                       Row(
                         children: [
-                          CircleAvatar(
-                            backgroundImage: NetworkImage(
-                              'https://avatar.iran.liara.run/username?username=${rc['userId']}',
-                            ),
-                            radius: 20,
-                            backgroundColor: Colors.grey[200],
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: quantity > 1 ? () => setState(() => quantity--) : null,
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            '${rc['userFirstName'] ?? 'User'} ${rc['userLastName'] ?? ''}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
+                          Text(quantity.toString(), style: Theme.of(context).textTheme.titleMedium),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: () => setState(() => quantity++),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      _buildAverageRatingStars(rc['rating']?.toDouble() ?? 0),
-                      const SizedBox(height: 6),
-                      Text(
-                        rc['comment'] ?? '',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        rc['createdAt'] != null
-                            ? (rc['createdAt'] is Timestamp
-                                ? (rc['createdAt'] as Timestamp)
-                                    .toDate()
-                                    .toLocal()
-                                    .toString()
-                                    .substring(0, 19)
-                                : rc['createdAt'].toString())
-                            : '',
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: addToCart,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text('Add to Cart'),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Rate this product:',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildUserRatingStars(),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _commentController,
+                    maxLines: 3,
+                    enabled: !_ratingSubmitted,
+                    decoration: InputDecoration(
+                      hintText: "Leave a comment (optional)",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: _ratingSubmitted ? Colors.grey[200] : null,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _ratingSubmitted ? null : _submitRatingAndComment,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      backgroundColor: _ratingSubmitted ? Colors.grey : null,
+                    ),
+                    child: Text(_ratingSubmitted ? 'Rated' : 'Submit Rating'),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Reviews:',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  ..._ratingsComments.map((rc) => Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        child: Text((rc['userFirstName'] ?? 'U')[0],
+                            style: const TextStyle(color: Colors.white)),
+                      ),
+                      title: Text(
+                        "${rc['userFirstName'] ?? 'User'} ${rc['userLastName'] ?? ''}",
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildStars(rc['rating']?.toDouble() ?? 0),
+                          if (rc['comment']?.isNotEmpty ?? false)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(rc['comment'] ?? '',
+                                  style: Theme.of(context).textTheme.bodyMedium),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              rc['createdAt'] != null
+                                  ? (rc['createdAt'] is Timestamp
+                                      ? (rc['createdAt'] as Timestamp).toDate().toLocal().toString().substring(0, 19)
+                                      : rc['createdAt'].toString())
+                                  : '',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )).toList(),
+                ],
               ),
-            ],
-          ],
+            ),
+      
+    );
+  }
+}
+
+class _ShimmerDetail extends StatelessWidget {
+  const _ShimmerDetail();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          height: 250,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[300],
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        Container(width: double.infinity, height: 20, color: Colors.grey[300]),
+        const SizedBox(height: 8),
+        Container(width: 100, height: 20, color: Colors.grey[300]),
+        const SizedBox(height: 16),
+        Container(width: double.infinity, height: 50, color: Colors.grey[300]),
+        const SizedBox(height: 16),
+        Container(width: double.infinity, height: 100, color: Colors.grey[300]),
+      ],
     );
   }
 }
