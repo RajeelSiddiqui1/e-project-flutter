@@ -4,7 +4,7 @@ import 'package:firebaseproject/user/auth/login.dart';
 import 'package:firebaseproject/user/home/about.dart';
 import 'package:firebaseproject/user/home/all_products.dart';
 import 'package:firebaseproject/user/home/cart_icon.dart';
-import 'package:firebaseproject/user/home/contact.dart';
+import 'package:firebaseproject/user/contact/contact.dart';
 import 'package:firebaseproject/user/home/orders.dart';
 import 'package:firebaseproject/user/home/product_detail.dart';
 import 'package:firebaseproject/user/home/wish_list.dart';
@@ -13,8 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 
-// --- REFACTOR: Centralized Wishlist Logic ---
-// This service removes duplicated code from HomeScreen and CategoryProductsScreen.
+// --- WishlistService remains unchanged as it contains no color references ---
 class WishlistService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -67,7 +66,6 @@ class WishlistService {
     }
   }
 }
-// --- END REFACTOR ---
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -79,15 +77,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final User? user = FirebaseAuth.instance.currentUser;
-  final WishlistService _wishlistService = WishlistService(); // Use the service
+  final WishlistService _wishlistService = WishlistService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      // --- REFACTOR: Using a proper BottomAppBar ---
       bottomNavigationBar: _buildBottomNavBar(),
-      // --- END REFACTOR ---
       body: RefreshIndicator(
         onRefresh: () async => setState(() {}),
         child: SingleChildScrollView(
@@ -99,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildSectionHeader('New & Noteworthy'),
               _buildProductsSection(),
               _buildAboutCompanySection(),
-              const SizedBox(height: 20), // Padding at the end
+              const SizedBox(height: 20),
             ],
           ).animate().fadeIn(duration: 500.ms),
         ),
@@ -129,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ],
-      backgroundColor: Colors.transparent,
+      // Kept transparent for colorless theme
       elevation: 0,
     );
   }
@@ -140,9 +136,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-          fontFamily: 'Georgia',
-          fontWeight: FontWeight.w600,
-        ),
+              fontFamily: 'Georgia',
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
@@ -157,19 +153,19 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const _ShimmerGrid();
         if (snapshot.data!.docs.isEmpty) {
-          return const Center(
+          return Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
+              padding: const EdgeInsets.symmetric(vertical: 60),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.book_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  Icon(Icons.book_outlined, size: 64, color: Colors.grey.shade600),
+                  const SizedBox(height: 16),
                   Text('No Books Found', style: TextStyle(fontSize: 18)),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Check back later for new arrivals!',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -184,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
-            childAspectRatio: 0.68, // Adjusted for better text visibility
+            childAspectRatio: 0.68,
           ),
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
@@ -205,7 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   productData: productData,
                   productId: productId,
                   isWishlisted: isWishlisted,
-                  // --- REFACTOR: Call the service ---
                   onWishlistToggle: () =>
                       _wishlistService.toggleWishlist(productId, productData),
                 );
@@ -217,7 +212,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- REFACTOR: Removed ExpansionTile for better UX ---
   Widget _buildCategoriesSection() {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('categories').orderBy('title').snapshots(),
@@ -250,9 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-  // --- END REFACTOR ---
 
-  // --- REFACTOR: A proper BottomAppBar for superior UI ---
   Widget _buildBottomNavBar() {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
@@ -273,7 +265,6 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Wishlist',
               onTap: () => Get.to(() => const WishlistScreen()),
             ),
-
             _NavButton(
               icon: Icons.receipt_long_outlined,
               label: 'Orders',
@@ -301,8 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- END REFACTOR ---
-
   Widget _buildAboutCompanySection() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -318,16 +307,14 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               'About BookHaven',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Georgia',
-              ),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Georgia',
+                  ),
             ),
             const SizedBox(height: 12),
             Text(
               'BookHaven is your go-to destination for the latest and greatest in books. Discover new genres, authors, and stories every week!',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(height: 1.5),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
             ),
           ],
         ),
@@ -359,14 +346,12 @@ class _NavButton extends StatelessWidget {
             Icon(
               icon,
               size: 24,
-              color: Theme.of(context).iconTheme.color?.withOpacity(0.8),
+              color: Colors.grey.shade700, // Replaced Theme-based color
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontSize: 10),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
             ),
           ],
         ),
@@ -409,7 +394,7 @@ class _CategoryTile extends StatelessWidget {
                     : null,
               ),
               child: imageUrl.isEmpty
-                  ? const Icon(Icons.category, color: Colors.grey)
+                  ? const Icon(Icons.category)
                   : null,
             ),
             const SizedBox(height: 10),
@@ -418,9 +403,9 @@ class _CategoryTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ],
         ),
@@ -429,7 +414,6 @@ class _CategoryTile extends StatelessWidget {
   }
 }
 
-// --- REFACTOR: Polished Product Card UI ---
 class _ProductCard extends StatelessWidget {
   final Map<String, dynamic> productData;
   final String productId;
@@ -457,8 +441,7 @@ class _ProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade300, width: 1),
       ),
-      clipBehavior:
-          Clip.antiAlias, // Ensures content respects the border radius
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Get.to(
           () => ProductDetailScreen(productId: productId, product: productData),
@@ -473,7 +456,7 @@ class _ProductCard extends StatelessWidget {
                 children: [
                   Container(
                     width: double.infinity,
-                    color: Colors.grey.shade100,
+                    color: Colors.grey.shade200, // Replaced Colors.grey.shade100
                     child: imageUrl != null && imageUrl.isNotEmpty
                         ? Image.network(
                             imageUrl,
@@ -483,14 +466,14 @@ class _ProductCard extends StatelessWidget {
                                 : const Center(
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: Colors.grey,
+                                      color: Colors.grey, // Grayscale loading
                                     ),
                                   ),
                             errorBuilder: (c, e, s) => const Center(
                               child: Icon(
                                 Icons.book_outlined,
                                 size: 50,
-                                color: Colors.grey,
+                                color: Colors.grey, // Grayscale icon
                               ),
                             ),
                           )
@@ -498,7 +481,7 @@ class _ProductCard extends StatelessWidget {
                             child: Icon(
                               Icons.book_outlined,
                               size: 50,
-                              color: Colors.grey,
+                              color: Colors.grey, // Grayscale icon
                             ),
                           ),
                   ),
@@ -512,13 +495,13 @@ class _ProductCard extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black87,
+                          color: Colors.grey.shade800, // Replaced Colors.black87
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '${discount.toStringAsFixed(0)}% OFF',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Colors.white, // Kept white for contrast
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -528,7 +511,9 @@ class _ProductCard extends StatelessWidget {
                   IconButton(
                     icon: Icon(
                       isWishlisted ? Icons.favorite : Icons.favorite_border,
-                      color: isWishlisted ? Colors.red : Colors.black,
+                      color: isWishlisted
+                          ? Colors.grey.shade700
+                          : Colors.black, // Replaced Colors.red
                     ),
                     onPressed: onWishlistToggle,
                   ),
@@ -559,9 +544,9 @@ class _ProductCard extends StatelessWidget {
                         if (discount > 0)
                           Text(
                             '\$${price.toStringAsFixed(2)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: Colors.grey.shade600, // Grayscale
                               decoration: TextDecoration.lineThrough,
                             ),
                           ),
@@ -584,7 +569,6 @@ class _ProductCard extends StatelessWidget {
     );
   }
 }
-// --- END REFACTOR ---
 
 class _ShimmerGrid extends StatelessWidget {
   const _ShimmerGrid();
@@ -617,7 +601,7 @@ class _ShimmerGrid extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
                   ),
-                  color: Colors.grey[200],
+                  color: Colors.grey.shade200, // Grayscale background
                 ),
               ),
             ),
@@ -631,10 +615,14 @@ class _ShimmerGrid extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       height: 16,
-                      color: Colors.grey[200],
+                      color: Colors.grey.shade200, // Grayscale shimmer
                     ),
                     const SizedBox(height: 8),
-                    Container(width: 60, height: 16, color: Colors.grey[200]),
+                    Container(
+                      width: 60,
+                      height: 16,
+                      color: Colors.grey.shade200, // Grayscale shimmer
+                    ),
                   ],
                 ),
               ),
@@ -667,11 +655,15 @@ class _ShimmerList extends StatelessWidget {
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey[200],
+                  color: Colors.grey.shade200, // Grayscale shimmer
                 ),
               ),
               const SizedBox(height: 10),
-              Container(width: 60, height: 14, color: Colors.grey[200]),
+              Container(
+                width: 60,
+                height: 14,
+                color: Colors.grey.shade200, // Grayscale shimmer
+              ),
             ],
           ),
         ),
@@ -680,7 +672,6 @@ class _ShimmerList extends StatelessWidget {
   }
 }
 
-// --- REFACTOR: CategoryProductsScreen using WishlistService ---
 class CategoryProductsScreen extends StatelessWidget {
   final String categoryId;
   final String categoryTitle;
@@ -692,8 +683,7 @@ class CategoryProductsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final WishlistService wishlistService =
-        WishlistService(); // Use the service
+    final WishlistService wishlistService = WishlistService();
 
     return Scaffold(
       appBar: AppBar(
@@ -702,7 +692,7 @@ class CategoryProductsScreen extends StatelessWidget {
           style: const TextStyle(fontFamily: 'Georgia'),
         ),
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        // Kept transparent
       ),
       body: RefreshIndicator(
         onRefresh: () async => Future.delayed(const Duration(seconds: 1)),
@@ -719,7 +709,11 @@ class CategoryProductsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.book_outlined, size: 64, color: Colors.grey),
+                    Icon(
+                      Icons.book_outlined,
+                      size: 64,
+                      color: Colors.grey.shade600, // Grayscale icon
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'No Books Found in this Genre',
@@ -752,17 +746,13 @@ class CategoryProductsScreen extends StatelessWidget {
                       .snapshots(),
                   builder: (context, wishlistSnapshot) {
                     bool isWishlisted =
-                        wishlistSnapshot.hasData &&
-                        wishlistSnapshot.data!.exists;
+                        wishlistSnapshot.hasData && wishlistSnapshot.data!.exists;
                     return _ProductCard(
                       productData: productData,
                       productId: productId,
                       isWishlisted: isWishlisted,
-                      // --- REFACTOR: Using the clean, single service call ---
-                      onWishlistToggle: () => wishlistService.toggleWishlist(
-                        productId,
-                        productData,
-                      ),
+                      onWishlistToggle: () =>
+                          wishlistService.toggleWishlist(productId, productData),
                     );
                   },
                 );
@@ -774,4 +764,3 @@ class CategoryProductsScreen extends StatelessWidget {
     );
   }
 }
-// --- END REFACTOR ---
