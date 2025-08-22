@@ -10,6 +10,22 @@ class OrdersScreen extends StatelessWidget {
     });
   }
 
+  // Define status colors
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'In Progress':
+        return Colors.blue;
+      case 'Completed':
+        return Colors.green;
+      case 'Rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,7 +73,10 @@ class OrdersScreen extends StatelessWidget {
                   ),
                   subtitle: Row(
                     children: [
-                      const Text("Status: "),
+                      Text(
+                        "Status: ",
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
                       DropdownButton<String>(
                         value: status,
                         underline: const SizedBox(),
@@ -66,12 +85,24 @@ class OrdersScreen extends StatelessWidget {
                           DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
                           DropdownMenuItem(value: "Completed", child: Text("Completed")),
                           DropdownMenuItem(value: "Rejected", child: Text("Rejected")),
-                        ],
+                        ].map((item) {
+                          return DropdownMenuItem<String>(
+                            value: item.value,
+                            child: Text(
+                              item.child.toString(),
+                              style: TextStyle(color: _getStatusColor(item.value!)),
+                            ),
+                          );
+                        }).toList(),
                         onChanged: (value) {
                           if (value != null) {
                             _updateStatus(orderId, value);
                           }
                         },
+                        style: TextStyle(
+                          color: _getStatusColor(status),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),

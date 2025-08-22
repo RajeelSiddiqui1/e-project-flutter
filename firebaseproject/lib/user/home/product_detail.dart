@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart'; // For shimmer effect
 import 'package:get/get.dart';
-import 'package:firebaseproject/user/home/product_detail.dart'; // Assuming this exists
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;

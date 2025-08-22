@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebaseproject/user/home/product_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -14,6 +15,7 @@ class AllProductsScreen extends StatefulWidget {
 class _AllProductsScreenState extends State<AllProductsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
+  final User? user = FirebaseAuth.instance.currentUser;
 
   List<QueryDocumentSnapshot> _allProducts = [];
   List<QueryDocumentSnapshot> _filteredProducts = [];
@@ -22,6 +24,7 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
   String _searchText = '';
   String _selectedCategoryId = '';
   bool _showDiscountOnly = false;
+  bool _showUnbeatableOnly = false;
   RangeValues _selectedPriceRange = const RangeValues(0, 10000);
   String _sortBy = 'latest';
 
@@ -73,26 +76,78 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     }
   }
 
+  Future<void> _toggleWishlist(String productId, Map<String, dynamic> productData, bool isWishlisted) async {
+    if (user == null) {
+      Get.snackbar('Error', 'Please log in to manage your wishlist');
+      return;
+    }
+
+    final wishlistRef = _firestore
+        .collection('wishlist')
+        .doc(user!.uid)
+        .collection('items')
+        .doc(productId);
+
+    if (isWishlisted) {
+      await wishlistRef.delete();
+      Get.snackbar('Removed', '${productData['name']} removed from wishlist');
+    } else {
+      await wishlistRef.set({
+        'productId': productId,
+        'name': productData['name'] ?? 'No Name',
+        'imageUrl': productData['imageUrl'] ?? '',
+        'price': productData['price'] ?? 0.0,
+        'addedAt': Timestamp.now(),
+      });
+      Get.snackbar('Added', '${productData['name']} added to wishlist');
+    }
+  }
+
   void _applyFilters() {
     List<QueryDocumentSnapshot> filtered = List.from(_allProducts);
+
     if (_selectedCategoryId.isNotEmpty) {
       filtered = filtered.where((doc) => doc['categoryId'] == _selectedCategoryId).toList();
     }
+
     if (_showDiscountOnly) {
       filtered = filtered.where((doc) => (doc.data() as Map)['discount'] != null && doc['discount'] > 0).toList();
     }
+
+    if (_showUnbeatableOnly) {
+      filtered = filtered.where((doc) => (doc.data() as Map)['discount'] != null && doc['discount'] > 30).toList();
+    }
+
     filtered = filtered.where((doc) {
       final price = (doc['price'] ?? 0).toDouble();
       return price >= _selectedPriceRange.start && price <= _selectedPriceRange.end;
     }).toList();
+
     if (_searchText.isNotEmpty) {
-      filtered = filtered.where((doc) => (doc['name'] ?? '').toString().toLowerCase().contains(_searchText.toLowerCase())).toList();
+      final searchLower = _searchText.toLowerCase();
+      filtered = filtered.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final name = (data['name'] ?? '').toString().toLowerCase();
+        final author = (data['author'] ?? '').toString().toLowerCase();
+        final price = (data['price'] ?? 0).toString();
+        final category = _categories.firstWhere(
+          (c) => c['id'] == data['categoryId'],
+          orElse: () => {'title': ''},
+        )['title'].toString().toLowerCase();
+
+        return name.contains(searchLower) ||
+            author.contains(searchLower) ||
+            price.contains(searchLower) ||
+            category.contains(searchLower);
+      }).toList();
     }
+
     filtered.sort((a, b) {
       Timestamp timeA = a['createdAt'] ?? Timestamp.now();
       Timestamp timeB = b['createdAt'] ?? Timestamp.now();
       return _sortBy == 'latest' ? timeB.compareTo(timeA) : timeA.compareTo(timeB);
     });
+
     setState(() => _filteredProducts = filtered);
   }
 
@@ -102,6 +157,7 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
       _searchText = '';
       _selectedCategoryId = '';
       _showDiscountOnly = false;
+      _showUnbeatableOnly = false;
       _selectedPriceRange = RangeValues(_minPrice, _maxPrice);
       _sortBy = 'latest';
       _applyFilters();
@@ -123,16 +179,18 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by title or author...',
+                hintText: 'Search by title, author, price, or category...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchText.isNotEmpty
-                    ? IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () {
-                        _searchController.clear();
-                        setState(() {
-                          _searchText = '';
-                          _applyFilters();
-                        });
-                      })
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchText = '';
+                            _applyFilters();
+                          });
+                        })
                     : null,
                 filled: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -153,15 +211,28 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
               ? const Center(child: Text('No Books Found', style: TextStyle(fontSize: 16)))
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.65),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.65,
+                  ),
                   itemCount: _filteredProducts.length,
                   itemBuilder: (context, index) {
                     final product = _filteredProducts[index].data() as Map<String, dynamic>;
                     final productId = _filteredProducts[index].id;
-                    return _ProductCard(
-                      productData: product,
-                      productId: productId,
-                    ).animate().fadeIn(delay: (100 * index).ms).slideY(begin: 0.3);
+                    return StreamBuilder<DocumentSnapshot>(
+                      stream: _firestore.collection('wishlist').doc(user?.uid).collection('items').doc(productId).snapshots(),
+                      builder: (context, wishlistSnapshot) {
+                        bool isWishlisted = wishlistSnapshot.data?.exists ?? false;
+                        return _ProductCard(
+                          productData: product,
+                          productId: productId,
+                          isWishlisted: isWishlisted,
+                          onWishlistToggle: () => _toggleWishlist(productId, product, isWishlisted),
+                        ).animate().fadeIn(delay: (100 * index).ms).slideY(begin: 0.3);
+                      },
+                    );
                   },
                 ),
     );
@@ -207,16 +278,28 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                 selected: _showDiscountOnly,
                 onSelected: (v) => setState(() => _showDiscountOnly = v),
               ),
-              const Spacer(),
-              SizedBox(width: double.infinity, child: TextButton(onPressed: _clearFilters, child: const Text('Reset Filters'))),
               const SizedBox(height: 8),
-              SizedBox(width: double.infinity, child: ElevatedButton(
-                onPressed: () {
-                  _applyFilters();
-                  Navigator.pop(context);
-                },
-                child: const Text('Apply Filters'),
-              )),
+              FilterChip(
+                label: const Text('Unbeatable Deals (>30% off)'),
+                selected: _showUnbeatableOnly,
+                onSelected: (v) => setState(() => _showUnbeatableOnly = v),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(onPressed: _clearFilters, child: const Text('Reset Filters')),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _applyFilters();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Apply Filters'),
+                ),
+              ),
             ],
           ),
         ),
@@ -228,13 +311,24 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
 class _ProductCard extends StatelessWidget {
   final Map<String, dynamic> productData;
   final String productId;
-  const _ProductCard({required this.productData, required this.productId});
+  final bool isWishlisted;
+  final VoidCallback onWishlistToggle;
+
+  const _ProductCard({
+    required this.productData,
+    required this.productId,
+    required this.isWishlisted,
+    required this.onWishlistToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
     final name = productData['name'] ?? 'No Name';
     final imageUrl = productData['imageUrl'] as String?;
     final price = productData['price'] ?? 0.0;
+    final discount = (productData['discount'] ?? 0).toDouble();
+    final discountedPrice = discount > 0 ? price * (1 - discount / 100) : price;
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide()),
       child: InkWell(
@@ -245,14 +339,42 @@ class _ProductCard extends StatelessWidget {
           children: [
             Expanded(
               flex: 3,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? Image.network(imageUrl, width: double.infinity, fit: BoxFit.cover,
-                        loadingBuilder: (c, child, p) => p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                        errorBuilder: (c, e, s) => const Center(child: Icon(Icons.book_outlined, size: 50)),
-                      )
-                    : const Center(child: Icon(Icons.book_outlined, size: 50)),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (c, child, p) => p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            errorBuilder: (c, e, s) => const Center(child: Icon(Icons.book_outlined, size: 50)),
+                          )
+                        : const Center(child: Icon(Icons.book_outlined, size: 50)),
+                  ),
+                  if (discount > 0)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        color: Colors.red,
+                        child: Text(
+                          '${discount.toStringAsFixed(0)}% OFF',
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: Icon(isWishlisted ? Icons.favorite : Icons.favorite_border, color: isWishlisted ? Colors.red : null),
+                      onPressed: onWishlistToggle,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -263,8 +385,30 @@ class _ProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    Text('\$${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                      name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (discount > 0)
+                          Text(
+                            '\$${price.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        Text(
+                          '\$${discountedPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

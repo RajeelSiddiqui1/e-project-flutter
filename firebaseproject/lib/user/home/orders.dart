@@ -27,6 +27,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
         .snapshots();
   }
 
+  // Define status colors
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'In Progress':
+        return Colors.blue;
+      case 'Completed':
+        return Colors.green;
+      case 'Rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   Widget _buildOrderItem(DocumentSnapshot order) {
     final items = order['items'] as List<dynamic>;
     return Card(
@@ -61,7 +77,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 const SizedBox(height: 8),
                 Text("Payment: ${order['paymentMethod']}", style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 8),
-                Text("Status: ${order['status']}", style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  "Status: ${order['status']}",
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: _getStatusColor(order['status']),
+                        fontWeight: FontWeight.w500,
+                      ),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   "Date: ${DateFormat.yMMMd().add_jm().format((order['orderDate'] as Timestamp).toDate())}",
@@ -72,13 +94,30 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 const SizedBox(height: 8),
                 ...items.map((item) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Name: ${item['name']}", style: Theme.of(context).textTheme.bodyMedium),
-                          Text("Price: ${item['price']}", style: Theme.of(context).textTheme.bodyMedium),
-                          Text("Quantity: ${item['quantity']}", style: Theme.of(context).textTheme.bodyMedium),
-                          Text("Total: ${item['totalPrice']}", style: Theme.of(context).textTheme.bodyMedium),
+                          item['imageUrl']?.isNotEmpty == true
+                              ? Image.network(
+                                  item['imageUrl'],
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                                )
+                              : const Icon(Icons.image_not_supported, size: 50),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Name: ${item['name']}", style: Theme.of(context).textTheme.bodyMedium),
+                                Text("Price: ${item['price']}", style: Theme.of(context).textTheme.bodyMedium),
+                                Text("Quantity: ${item['quantity']}", style: Theme.of(context).textTheme.bodyMedium),
+                                Text("Total: ${item['totalPrice']}", style: Theme.of(context).textTheme.bodyMedium),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     )),
