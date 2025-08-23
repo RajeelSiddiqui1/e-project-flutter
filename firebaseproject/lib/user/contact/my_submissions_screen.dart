@@ -14,24 +14,17 @@ class MySubmissionsScreen extends StatelessWidget {
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text("My Submissions")),
-        body: const Center(
-          child: Text("Please log in to see your submissions."),
-        ),
+        body: const Center(child: Text("Please log in to see your submissions.")),
       );
     }
 
     final stream = FirebaseFirestore.instance
         .collection('contacts')
-        .where('userId', isEqualTo: user.uid)
-        .orderBy('timestamp', descending: true)
         .snapshots();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "My Submissions",
-          style: TextStyle(fontFamily: 'Georgia'),
-        ),
+        title: const Text("My Submissions", style: TextStyle(fontFamily: 'Georgia')),
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -47,23 +40,41 @@ class MySubmissionsScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade400),
                   const SizedBox(height: 16),
-                  const Text(
-                    "No Submissions Found",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                  const Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   const Text("Your submitted requests will appear here."),
                 ],
               ),
             );
           }
+
+          final docs = snapshot.data!.docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['userId'] == user.uid;
+          }).toList();
+
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  const Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text("Your submitted requests will appear here."),
+                ],
+              ),
+            );
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.all(8),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
+              final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
-              return _SubmissionCard(data: data);
+              return _SubmissionCard(data: data, docId: doc.id);
             },
           );
         },
@@ -101,22 +112,22 @@ class MySubmissionsScreen extends StatelessWidget {
 
 class _SubmissionCard extends StatelessWidget {
   final Map<String, dynamic> data;
-  const _SubmissionCard({required this.data});
+  final String docId;
+  const _SubmissionCard({required this.data, required this.docId});
 
   @override
   Widget build(BuildContext context) {
     final timestamp = data['timestamp'];
     String date = "Date not available";
-
     if (timestamp is Timestamp) {
       date = DateFormat('MMMM d, yyyy \'at\' h:mm a').format(timestamp.toDate());
     } else if (timestamp is String) {
-      date = timestamp; // If already saved as formatted string
+      date = timestamp;
     }
 
     final reason = data['reason'] ?? 'No Reason';
     final message = data['message'] ?? 'No message content.';
-    final status = data['status'] ?? 'Unknown';
+    final status = (data['status'] ?? 'Pending').toString();
     final userEmail = data['userEmail'] ?? 'No email provided';
 
     return Card(
@@ -131,50 +142,51 @@ class _SubmissionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Reason + Status Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  reason,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text(reason, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: _getStatusColor(status),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    status,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  child: Text(status, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
             const Divider(height: 20),
-            // Message
-            Text(
-              message,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.grey.shade700, height: 1.5),
-            ),
+            Text(message, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
             const SizedBox(height: 12),
-            // Email
-            Text(
-              "User Email: $userEmail",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
+            Text("User Email: $userEmail", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             const SizedBox(height: 6),
-            // Date
-            Text(
-              "Submitted on: $date",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            Text("Submitted on: $date", style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  await FirebaseFirestore.instance.collection('contacts').doc(docId).delete();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Submission deleted")));
+                },
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return Colors.green.shade100;
+      case 'rejected':
+        return Colors.red.shade100;
+      default:
+        return Colors.blue.shade50;
+    }
   }
 }

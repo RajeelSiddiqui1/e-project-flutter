@@ -1,4 +1,4 @@
-import 'package:firebaseproject/admin/category/auth/login.dart';
+import 'package:firebaseproject/admin/auth/login.dart';
 import 'package:firebaseproject/user/auth/forgotpassword.dart';
 import 'package:firebaseproject/user/auth/signup.dart';
 import 'package:flutter/material.dart';

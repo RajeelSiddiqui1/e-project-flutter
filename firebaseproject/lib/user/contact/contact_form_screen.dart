@@ -23,12 +23,10 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       Get.snackbar('Error', 'You must be logged in to submit a request.');
       return;
     }
-
     if (_selectedReason == null) {
       Get.snackbar('Validation Error', 'Please select a reason for your request.');
       return;
     }
-
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
@@ -37,7 +35,7 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           'userEmail': user.email,
           'reason': _selectedReason,
           'message': _messageController.text,
-          'status': 'Submitted',
+          'status': 'Pending',
           'timestamp': FieldValue.serverTimestamp(),
         });
         Get.back();
@@ -67,8 +65,6 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Reason for Contact", style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _selectedReason,
                 hint: const Text('Select a reason...'),
@@ -82,8 +78,6 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                 decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 24),
-              Text("Your Message", style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
               TextFormField(
                 controller: _messageController,
                 maxLines: 8,
@@ -111,7 +105,9 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: _isLoading ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Text('Submit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: _isLoading
+                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                      : const Text('Submit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

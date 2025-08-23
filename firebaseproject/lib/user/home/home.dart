@@ -495,7 +495,7 @@ class _ProductCard extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade800, // Replaced Colors.black87
+                          color: Colors.red.shade800, // Replaced Colors.black87
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -512,8 +512,8 @@ class _ProductCard extends StatelessWidget {
                     icon: Icon(
                       isWishlisted ? Icons.favorite : Icons.favorite_border,
                       color: isWishlisted
-                          ? Colors.grey.shade700
-                          : Colors.black, // Replaced Colors.red
+                          ? Colors.red.shade700
+                          : Colors.white, // Replaced Colors.red
                     ),
                     onPressed: onWishlistToggle,
                   ),
@@ -689,8 +689,10 @@ class CategoryProductsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           categoryTitle,
+          
           style: const TextStyle(fontFamily: 'Georgia'),
         ),
+        automaticallyImplyLeading:false,
         elevation: 0,
         // Kept transparent
       ),

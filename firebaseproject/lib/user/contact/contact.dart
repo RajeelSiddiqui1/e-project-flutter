@@ -11,6 +11,7 @@ class ContactScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Contact Us", style: TextStyle(fontFamily: 'Georgia')),
+        automaticallyImplyLeading: false,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -83,8 +84,7 @@ class ContactScreen extends StatelessWidget {
                 label: const Text("View My Submissions"),
                 onPressed: () => Get.to(() => const MySubmissionsScreen()),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black,
-                  side: BorderSide(color: Colors.grey.shade400),
+                
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

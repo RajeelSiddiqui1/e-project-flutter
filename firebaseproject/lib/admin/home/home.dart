@@ -1,5 +1,6 @@
-import 'package:firebaseproject/admin/category/auth/login.dart';
+import 'package:firebaseproject/admin/auth/login.dart';
 import 'package:firebaseproject/admin/category/categories.dart';
+import 'package:firebaseproject/admin/contact/contact.dart';
 import 'package:firebaseproject/admin/product/products.dart';
 import 'package:firebaseproject/admin/users/users.dart';
 import 'package:firebaseproject/admin/orders/orders.dart';
@@ -72,6 +73,14 @@ class AdminHomeScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => Get.to(() => const OrdersScreen()),
                   child: const Text("Manage Orders"),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Get.to(() => const AdminOnlySubmissionsScreen()),
+                  child: const Text("Manage Contacts"),
                 ),
               ),
             ],
