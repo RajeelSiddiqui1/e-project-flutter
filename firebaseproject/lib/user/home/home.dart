@@ -279,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _NavButton(
               icon: Icons.info_outline,
               label: 'About',
-              onTap: () => Get.to(() => const AboutScreen()),
+              onTap: () => Get.to(() => AboutScreen()),
             ),
             _NavButton(
               icon: Icons.contact_mail_outlined,

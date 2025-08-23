@@ -27,6 +27,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<Map<String, dynamic>> _ratingsComments = [];
   double _averageRating = 0.0;
   bool _isLoading = true;
+  Map<String, bool> _userLikes = {}; // Tracks user's like/unlike status for each review
 
   @override
   void initState() {
@@ -53,27 +54,91 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         .get();
 
     final docs = ratingsSnapshot.docs;
+    Map<String, bool> tempUserLikes = {};
     if (docs.isNotEmpty) {
       int totalRating = 0;
       List<Map<String, dynamic>> tempList = [];
       for (var doc in docs) {
         final data = doc.data();
+        data['docId'] = doc.id; // Store document ID for like/unlike operations
         totalRating += ((data['rating'] is int)
             ? data['rating'] as int
             : (data['rating'] is double ? (data['rating'] as double).toInt() : 0));
         tempList.add(data);
+
+        // Check if current user has liked this review
+        if (user != null) {
+          final likeSnapshot = await _firestore
+              .collection('likes')
+              .where('userId', isEqualTo: user.uid)
+              .where('reviewId', isEqualTo: doc.id)
+              .limit(1)
+              .get();
+          tempUserLikes[doc.id] = likeSnapshot.docs.isNotEmpty;
+        }
       }
       setState(() {
         _ratingsComments = tempList;
         _averageRating = totalRating / docs.length;
+        _userLikes = tempUserLikes;
       });
     } else {
       setState(() {
         _ratingsComments = [];
         _averageRating = 0.0;
+        _userLikes = {};
       });
     }
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _toggleLike(String reviewId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Get.snackbar('Error', 'Please sign in to like reviews',
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+      return;
+    }
+
+    try {
+      final likeQuery = await _firestore
+          .collection('likes')
+          .where('userId', isEqualTo: user.uid)
+          .where('reviewId', isEqualTo: reviewId)
+          .limit(1)
+          .get();
+
+      final reviewRef = _firestore.collection('ratings').doc(reviewId);
+
+      if (likeQuery.docs.isNotEmpty) {
+        // Unlike
+        await likeQuery.docs.first.reference.delete();
+        await reviewRef.update({
+          'likeCount': FieldValue.increment(-1),
+        });
+      } else {
+        // Like
+        await _firestore.collection('likes').add({
+          'userId': user.uid,
+          'productId': widget.productId,
+          'reviewId': reviewId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        await reviewRef.update({
+          'likeCount': FieldValue.increment(1),
+        });
+      }
+
+      setState(() {
+        _userLikes[reviewId] = !(_userLikes[reviewId] ?? false);
+      });
+      await _loadRatingsAndUserData();
+      Get.snackbar('Success', (_userLikes[reviewId] ?? false) ? 'Review liked' : 'Review unliked',
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update like: $e',
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+    }
   }
 
   Future<void> _submitRatingAndComment() async {
@@ -120,6 +185,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   'createdAt': FieldValue.serverTimestamp(),
                   'userFirstName': firstName,
                   'userLastName': lastName,
+                  'likeCount': 0, // Initialize like count
                 });
                 setState(() {
                   _ratingSubmitted = true;
@@ -340,6 +406,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       : rc['createdAt'].toString())
                                   : '',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    _userLikes[rc['docId']] ?? false 
+                                        ? Icons.thumb_up 
+                                        : Icons.thumb_up_outlined,
+                                    color: _userLikes[rc['docId']] ?? false 
+                                        ? Colors.blue 
+                                        : Colors.grey,
+                                  ),
+                                  onPressed: () => _toggleLike(rc['docId']),
+                                ),
+                                Text(
+                                  '${rc['likeCount'] ?? 0}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
                             ),
                           ),
                         ],

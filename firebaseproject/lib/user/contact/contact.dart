@@ -29,7 +29,7 @@ class ContactScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               "We're here to help. Reach out to us through any of the channels below or submit a request directly.",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
             _buildContactInfoTile(
@@ -84,7 +84,6 @@ class ContactScreen extends StatelessWidget {
                 label: const Text("View My Submissions"),
                 onPressed: () => Get.to(() => const MySubmissionsScreen()),
                 style: OutlinedButton.styleFrom(
-                
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -97,23 +96,28 @@ class ContactScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildContactInfoTile(BuildContext context, {required IconData icon, required String title, required String subtitle}) {
+  Widget _buildContactInfoTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(), // no custom color
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.black87, size: 24),
+          Icon(icon, size: 24),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 2),
-              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700)),
+              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ],

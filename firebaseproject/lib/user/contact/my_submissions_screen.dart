@@ -1,6 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
@@ -20,11 +20,13 @@ class MySubmissionsScreen extends StatelessWidget {
 
     final stream = FirebaseFirestore.instance
         .collection('contacts')
+        .where('userId', isEqualTo: user.uid)
         .snapshots();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Submissions", style: TextStyle(fontFamily: 'Georgia')),
+        automaticallyImplyLeading: false,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -34,39 +36,21 @@ class MySubmissionsScreen extends StatelessWidget {
             return _buildShimmerList();
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
+            return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  const Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text("Your submitted requests will appear here."),
+                  Icon(Icons.inbox_outlined, size: 80),
+                  SizedBox(height: 16),
+                  Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text("Your submitted requests will appear here."),
                 ],
               ),
             );
           }
 
-          final docs = snapshot.data!.docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return data['userId'] == user.uid;
-          }).toList();
-
-          if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  const Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text("Your submitted requests will appear here."),
-                ],
-              ),
-            );
-          }
+          final docs = snapshot.data!.docs;
 
           return ListView.builder(
             padding: const EdgeInsets.all(8),
@@ -94,13 +78,13 @@ class MySubmissionsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(width: 150, height: 20, color: Colors.grey.shade300),
+                Container(width: 150, height: 20),
                 const SizedBox(height: 12),
-                Container(width: double.infinity, height: 14, color: Colors.grey.shade300),
+                Container(width: double.infinity, height: 14),
                 const SizedBox(height: 8),
-                Container(width: 200, height: 14, color: Colors.grey.shade300),
+                Container(width: 200, height: 14),
                 const SizedBox(height: 12),
-                Container(width: 100, height: 12, color: Colors.grey.shade300),
+                Container(width: 100, height: 12),
               ],
             ),
           ),
@@ -128,14 +112,12 @@ class _SubmissionCard extends StatelessWidget {
     final reason = data['reason'] ?? 'No Reason';
     final message = data['message'] ?? 'No message content.';
     final status = (data['status'] ?? 'Pending').toString();
-    final userEmail = data['userEmail'] ?? 'No email provided';
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -149,24 +131,22 @@ class _SubmissionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(status),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(),
                   ),
                   child: Text(status, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
             const Divider(height: 20),
-            Text(message, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
+            Text(message, maxLines: 3, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 12),
-            Text("User Email: $userEmail", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-            const SizedBox(height: 6),
-            Text("Submitted on: $date", style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            Text("Submitted on: $date", style: const TextStyle(fontSize: 12)),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
               child: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon: const Icon(Icons.delete),
                 onPressed: () async {
                   await FirebaseFirestore.instance.collection('contacts').doc(docId).delete();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Submission deleted")));
@@ -177,16 +157,5 @@ class _SubmissionCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green.shade100;
-      case 'rejected':
-        return Colors.red.shade100;
-      default:
-        return Colors.blue.shade50;
-    }
   }
 }

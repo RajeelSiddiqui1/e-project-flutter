@@ -1,172 +1,199 @@
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 
-class AdminOnlySubmissionsScreen extends StatelessWidget {
-  const AdminOnlySubmissionsScreen({super.key});
+void main() {
+  runApp(MyApp());
+}
 
-  Future<bool> _isAdmin() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return false;
-    final adminDoc = await FirebaseFirestore.instance
-        .collection('Admins')
-        .doc(user.uid)
-        .get();
-    return adminDoc.exists;
-  }
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _isAdmin(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (!snapshot.hasData || !snapshot.data!) {
-          return Scaffold(
-            appBar: AppBar(title: const Text("Access Denied")),
-            body: const Center(child: Text("You do not have admin access.")),
-          );
-        }
-        final stream = FirebaseFirestore.instance
-            .collection('contacts')
-            .where('deletedAt', isNull: true)
-            .orderBy('timestamp', descending: true)
-            .snapshots();
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text("Admin Submissions", style: TextStyle(fontFamily: 'Georgia')),
-            automaticallyImplyLeading: false,
-            elevation: 0,
-          ),
-          body: StreamBuilder<QuerySnapshot>(
-            stream: stream,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                print('Admin stream error: ${snapshot.error}');
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
-              if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmerList();
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade400),
-                      const SizedBox(height: 16),
-                      const Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      const Text("All submitted requests will appear here."),
-                    ],
-                  ),
-                );
-              }
-              print('Fetched ${snapshot.data!.docs.length} submissions for admin');
-              return ListView.builder(
-                padding: const EdgeInsets.all(8),
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final doc = snapshot.data!.docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  return _AdminSubmissionCard(doc: doc, data: data);
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildShimmerList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(width: 150, height: 20, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
-                Container(width: double.infinity, height: 14, color: Colors.grey.shade300),
-                const SizedBox(height: 8),
-                Container(width: 200, height: 14, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
-                Container(width: 100, height: 12, color: Colors.grey.shade300),
-              ],
-            ),
-          ),
-        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1200.ms);
-      },
+    return MaterialApp(
+      title: 'Admin Contact Manager',
+      theme: ThemeData(
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: ContactsAdminPage(),
     );
   }
 }
 
-class _AdminSubmissionCard extends StatelessWidget {
-  final DocumentSnapshot doc;
-  final Map<String, dynamic> data;
-  const _AdminSubmissionCard({required this.doc, required this.data});
+class ContactsAdminPage extends StatefulWidget {
+  @override
+  _ContactsAdminPageState createState() => _ContactsAdminPageState();
+}
+
+class _ContactsAdminPageState extends State<ContactsAdminPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final User? user = FirebaseAuth.instance.currentUser;
+
+  // Status options for contacts
+  final List<String> statusOptions = [
+    'Pending',
+    'In Progress',
+    'Resolved',
+    'Closed'
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final timestamp = data['timestamp'];
-    String date = "Date not available";
-    if (timestamp is Timestamp) {
-      date = DateFormat('MMMM d, yyyy \'at\' h:mm a').format(timestamp.toDate());
-    } else if (timestamp is String) {
-      date = timestamp;
-    }
-    final reason = data['reason'] ?? 'No Reason';
-    final message = data['message'] ?? 'No message content.';
-    final status = data['status'] ?? 'Unknown';
-    final userEmail = data['userEmail'] ?? 'No email provided';
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Contact Management - Admin Panel'),
+        automaticallyImplyLeading: false,
+        elevation: 0,
       ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore.collection('contacts').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No contacts found'));
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              var contact = snapshot.data!.docs[index];
+              var data = contact.data() as Map<String, dynamic>;
+
+              return ContactCard(
+                contactId: contact.id,
+                name: data['name'] ?? 'No Name',
+                email: data['email'] ?? 'No Email',
+                phone: data['phone'] ?? 'No Phone',
+                message: data['message'] ?? 'No Message',
+                status: data['status'] ?? 'Pending',
+                statusOptions: statusOptions,
+                onStatusChanged: (newStatus) {
+                  _updateContactStatus(contact.id, newStatus);
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _updateContactStatus(String contactId, String newStatus) async {
+    try {
+      await _firestore.collection('contacts').doc(contactId).update({
+        'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Status updated successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating status: $e')),
+      );
+    }
+  }
+}
+
+class ContactCard extends StatelessWidget {
+  final String contactId;
+  final String name;
+  final String email;
+  final String phone;
+  final String message;
+  final String status;
+  final List<String> statusOptions;
+  final Function(String) onStatusChanged;
+
+  const ContactCard({
+    Key? key,
+    required this.contactId,
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.message,
+    required this.status,
+    required this.statusOptions,
+    required this.onStatusChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(reason, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                DropdownButton<String>(
-                  value: status,
-                  items: ['Pending', 'In Progress', 'Resolved'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      doc.reference.update({'status': newValue});
-                    }
-                  },
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(),
+                  ),
+                  child: Text(
+                    status,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const Divider(height: 20),
-            Text(message, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
+            const SizedBox(height: 8),
+            Text(email, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 4),
+            Text(phone, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 14),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 12),
-            Text("User Email: $userEmail", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-            const SizedBox(height: 6),
-            Text("Submitted on: $date", style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            DropdownButtonFormField<String>(
+              value: status,
+              items: statusOptions.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  onStatusChanged(newValue);
+                }
+              },
+              decoration: const InputDecoration(
+                labelText: 'Update Status',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
           ],
         ),
       ),
