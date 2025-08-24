@@ -1,8 +1,47 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart'; // For shimmer effect
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+
+class LikeManager {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> toggleLike(String reviewId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Get.snackbar('Error', 'Please sign in to like reviews',
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+      return;
+    }
+
+    try {
+      final likeQuery = await _firestore
+          .collection('likes')
+          .where('userId', isEqualTo: user.uid)
+          .where('reviewId', isEqualTo: reviewId)
+          .limit(1)
+          .get();
+
+      if (likeQuery.docs.isNotEmpty) {
+        await likeQuery.docs.first.reference.delete();
+        Get.snackbar('Success', 'Review unliked',
+            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+      } else {
+        await _firestore.collection('likes').add({
+          'userId': user.uid,
+          'reviewId': reviewId,
+          'createdAt': Timestamp.now(),
+        });
+        Get.snackbar('Success', 'Review liked',
+            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update like: $e',
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+    }
+  }
+}
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -27,7 +66,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<Map<String, dynamic>> _ratingsComments = [];
   double _averageRating = 0.0;
   bool _isLoading = true;
-  Map<String, bool> _userLikes = {}; // Tracks user's like/unlike status for each review
+  Map<String, bool> _userLikes = {};
+  final LikeManager _likeManager = LikeManager();
 
   @override
   void initState() {
@@ -60,13 +100,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       List<Map<String, dynamic>> tempList = [];
       for (var doc in docs) {
         final data = doc.data();
-        data['docId'] = doc.id; // Store document ID for like/unlike operations
+        data['docId'] = doc.id;
         totalRating += ((data['rating'] is int)
             ? data['rating'] as int
             : (data['rating'] is double ? (data['rating'] as double).toInt() : 0));
         tempList.add(data);
 
-        // Check if current user has liked this review
         if (user != null) {
           final likeSnapshot = await _firestore
               .collection('likes')
@@ -76,6 +115,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               .get();
           tempUserLikes[doc.id] = likeSnapshot.docs.isNotEmpty;
         }
+
+        // Count total likes for this review
+        final totalLikesSnapshot = await _firestore
+            .collection('likes')
+            .where('reviewId', isEqualTo: doc.id)
+            .get();
+        data['totalLikes'] = totalLikesSnapshot.docs.length;
       }
       setState(() {
         _ratingsComments = tempList;
@@ -93,52 +139,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _toggleLike(String reviewId) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      Get.snackbar('Error', 'Please sign in to like reviews',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
-      return;
-    }
-
-    try {
-      final likeQuery = await _firestore
-          .collection('likes')
-          .where('userId', isEqualTo: user.uid)
-          .where('reviewId', isEqualTo: reviewId)
-          .limit(1)
-          .get();
-
-      final reviewRef = _firestore.collection('ratings').doc(reviewId);
-
-      if (likeQuery.docs.isNotEmpty) {
-        // Unlike
-        await likeQuery.docs.first.reference.delete();
-        await reviewRef.update({
-          'likeCount': FieldValue.increment(-1),
-        });
-      } else {
-        // Like
-        await _firestore.collection('likes').add({
-          'userId': user.uid,
-          'productId': widget.productId,
-          'reviewId': reviewId,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        await reviewRef.update({
-          'likeCount': FieldValue.increment(1),
-        });
-      }
-
-      setState(() {
-        _userLikes[reviewId] = !(_userLikes[reviewId] ?? false);
-      });
-      await _loadRatingsAndUserData();
-      Get.snackbar('Success', (_userLikes[reviewId] ?? false) ? 'Review liked' : 'Review unliked',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to update like: $e',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
-    }
+    await _likeManager.toggleLike(reviewId);
+    await _loadRatingsAndUserData();
   }
 
   Future<void> _submitRatingAndComment() async {
@@ -147,7 +149,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Fetch or derive firstName and lastName
     String firstName = "User";
     String lastName = "";
     if (user.displayName != null && user.displayName!.isNotEmpty) {
@@ -155,7 +156,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       firstName = nameParts[0];
       lastName = nameParts.length > 1 ? nameParts.sublist(1).join(" ") : "";
     } else {
-      // Optionally fetch from Users collection if set up
       final userDoc = await _firestore.collection('Users').doc(user.uid).get();
       if (userDoc.exists) {
         firstName = userDoc.data()?['firstName'] ?? "User";
@@ -185,7 +185,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   'createdAt': FieldValue.serverTimestamp(),
                   'userFirstName': firstName,
                   'userLastName': lastName,
-                  'likeCount': 0, // Initialize like count
+                  'likeCount': 0,
                 });
                 setState(() {
                   _ratingSubmitted = true;
@@ -424,7 +424,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   onPressed: () => _toggleLike(rc['docId']),
                                 ),
                                 Text(
-                                  '${rc['likeCount'] ?? 0}',
+                                  '${rc['totalLikes'] ?? 0}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
