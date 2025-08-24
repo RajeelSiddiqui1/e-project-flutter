@@ -45,7 +45,15 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('contacts').snapshots(),
+        stream: _firestore
+            .collection('contacts')
+            .where('userEmail', isEqualTo: 'ahmed@gmail.com') // Filter by userEmail
+            .where('status', isEqualTo: 'Pending') // Filter by status
+            // Add more filters as needed, e.g.:
+            // .where('message', isEqualTo: 'Please help me admin')
+            // .where('reason', isEqualTo: 'Technical Support')
+            // .where('userId', isEqualTo: 'E4CA9RIUy0NxMZl7DRSyCM48cIo1')
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -67,9 +75,7 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
 
               return ContactCard(
                 contactId: contact.id,
-                name: data['name'] ?? 'No Name',
-                email: data['email'] ?? 'No Email',
-                phone: data['phone'] ?? 'No Phone',
+                email: data['userEmail'] ?? 'No Email', // Adjusted to match userEmail
                 message: data['message'] ?? 'No Message',
                 status: data['status'] ?? 'Pending',
                 statusOptions: statusOptions,
@@ -87,9 +93,9 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
   Future<void> _updateContactStatus(String contactId, String newStatus) async {
     try {
       await _firestore.collection('contacts').doc(contactId).update({
-        'status': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  'status': newStatus,
+  'updatedAt': FieldValue.serverTimestamp(),
+});
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Status updated successfully')),
@@ -104,9 +110,7 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
 
 class ContactCard extends StatelessWidget {
   final String contactId;
-  final String name;
   final String email;
-  final String phone;
   final String message;
   final String status;
   final List<String> statusOptions;
@@ -115,9 +119,7 @@ class ContactCard extends StatelessWidget {
   const ContactCard({
     Key? key,
     required this.contactId,
-    required this.name,
     required this.email,
-    required this.phone,
     required this.message,
     required this.status,
     required this.statusOptions,
@@ -139,7 +141,7 @@ class ContactCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    name,
+                    email, // Replaced name with email as the primary identifier
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -163,10 +165,6 @@ class ContactCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(email, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 4),
-            Text(phone, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             Text(
               message,
