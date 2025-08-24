@@ -40,19 +40,14 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contact Management - Admin Panel'),
+        title: const Text('Contact Management'),
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('contacts')
-            .where('userEmail', isEqualTo: 'ahmed@gmail.com') // Filter by userEmail
-            .where('status', isEqualTo: 'Pending') // Filter by status
-            // Add more filters as needed, e.g.:
-            // .where('message', isEqualTo: 'Please help me admin')
-            // .where('reason', isEqualTo: 'Technical Support')
-            // .where('userId', isEqualTo: 'E4CA9RIUy0NxMZl7DRSyCM48cIo1')
+            .orderBy('updatedAt', descending: true) // latest contacts first
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -75,7 +70,7 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
 
               return ContactCard(
                 contactId: contact.id,
-                email: data['userEmail'] ?? 'No Email', // Adjusted to match userEmail
+                email: data['userEmail'] ?? 'No Email',
                 message: data['message'] ?? 'No Message',
                 status: data['status'] ?? 'Pending',
                 statusOptions: statusOptions,
@@ -93,9 +88,9 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
   Future<void> _updateContactStatus(String contactId, String newStatus) async {
     try {
       await _firestore.collection('contacts').doc(contactId).update({
-  'status': newStatus,
-  'updatedAt': FieldValue.serverTimestamp(),
-});
+        'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Status updated successfully')),
@@ -141,7 +136,7 @@ class ContactCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    email, // Replaced name with email as the primary identifier
+                    email,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -150,7 +145,8 @@ class ContactCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(),
@@ -189,7 +185,8 @@ class ContactCard extends StatelessWidget {
               decoration: const InputDecoration(
                 labelText: 'Update Status',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               ),
             ),
           ],
