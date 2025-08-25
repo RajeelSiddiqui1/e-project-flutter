@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -18,31 +19,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void resetPassword() async {
-    if (emailController.text.trim().isEmpty || !GetUtils.isEmail(emailController.text.trim())) {
-      Get.snackbar('Error', 'Please enter a valid email address.');
+ Future<void> resetPassword() async {
+  final email = emailController.text.trim();
+
+  if (email.isEmpty || !GetUtils.isEmail(email)) {
+    Get.snackbar('Error', 'Please enter a valid email address.');
+    return;
+  }
+
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection("Users") // ✅ capital Users jaisa tumhara DB me hai
+        .where('email', isEqualTo: email)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      Get.snackbar('Error', 'No account found with this email.');
       return;
     }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text.trim());
-      Get.snackbar(
-        'Success',
-        'Password reset link sent to your email.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-      Get.back();
-    } on FirebaseAuthException catch (e) {
-      Get.snackbar('Error', e.message ?? 'Failed to send link.', snackPosition: SnackPosition.BOTTOM);
-    }
+
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+    Get.off(() => const ResetLinkSentScreen()); // ✅ Redirect
+  } on FirebaseAuthException catch (e) {
+    Get.snackbar('Error', e.message ?? 'Failed to send link.',
+        snackPosition: SnackPosition.BOTTOM);
   }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Forgot Password'),
-      automaticallyImplyLeading: false,
+      appBar: AppBar(
+        title: const Text('Forgot Password'),
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -57,14 +67,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             TextField(
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(hintText: 'Enter your email', prefixIcon: Icon(Icons.email_outlined)),
+              decoration: const InputDecoration(
+                hintText: 'Enter your email',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(onPressed: resetPassword, child: const Text('Reset Password')),
+              child: ElevatedButton(
+                  onPressed: resetPassword, child: const Text('Reset Password')),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ✅ New Screen
+class ResetLinkSentScreen extends StatelessWidget {
+  const ResetLinkSentScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.mark_email_read_outlined,
+                  size: 100, color: Colors.green),
+              SizedBox(height: 20),
+              Text(
+                "Password reset link has been sent to your email.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ),
     );

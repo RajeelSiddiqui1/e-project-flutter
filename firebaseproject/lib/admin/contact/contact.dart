@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 void main() {
   runApp(MyApp());
@@ -10,25 +9,23 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Admin Contact Manager',
+      title: 'Contact Manager',
       theme: ThemeData(
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: ContactsAdminPage(),
+      home: ContactsPage(),
     );
   }
 }
 
-class ContactsAdminPage extends StatefulWidget {
+class ContactsPage extends StatefulWidget {
   @override
-  _ContactsAdminPageState createState() => _ContactsAdminPageState();
+  _ContactsPageState createState() => _ContactsPageState();
 }
 
-class _ContactsAdminPageState extends State<ContactsAdminPage> {
+class _ContactsPageState extends State<ContactsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final User? user = FirebaseAuth.instance.currentUser;
 
-  // Status options for contacts
   final List<String> statusOptions = [
     'Pending',
     'In Progress',
@@ -40,14 +37,14 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contact Management'),
+        title: const Text('All Contacts'),
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('contacts')
-            .orderBy('updatedAt', descending: true) // latest contacts first
+            .orderBy('updatedAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -145,8 +142,7 @@ class ContactCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(),

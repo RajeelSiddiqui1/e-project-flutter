@@ -29,8 +29,10 @@ class OrdersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("All Orders"),
-      automaticallyImplyLeading: false,),
+      appBar: AppBar(
+        title: const Text("All Orders"),
+        automaticallyImplyLeading: false,
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('orders').snapshots(),
         builder: (context, snapshot) {
@@ -60,7 +62,8 @@ class OrdersScreen extends StatelessWidget {
               final deliveryFee = data['deliveryFee']?.toString() ?? '0';
               final itemsAmount = data['itemsAmount']?.toString() ?? '0';
               final totalAmount = data['totalAmount']?.toString() ?? '0';
-              final orderDate = (data['orderDate'] as Timestamp?)?.toDate() ?? DateTime.now();
+              final orderDate =
+                  (data['orderDate'] as Timestamp?)?.toDate() ?? DateTime.now();
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -72,40 +75,32 @@ class OrdersScreen extends StatelessWidget {
                       Text("Total: $totalAmount"),
                     ],
                   ),
-                  subtitle: Row(
-                    children: [
-                      Text(
-                        "Status: ",
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      DropdownButton<String>(
-                        value: status,
-                        underline: const SizedBox(),
-                        items: const [
-                          DropdownMenuItem(value: "Pending", child: Text("Pending")),
-                          DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
-                          DropdownMenuItem(value: "Completed", child: Text("Completed")),
-                          DropdownMenuItem(value: "Rejected", child: Text("Rejected")),
-                        ].map((item) {
-                          return DropdownMenuItem<String>(
-                            value: item.value,
-                            child: Text(
-                              item.child.toString(),
-                              style: TextStyle(color: _getStatusColor(item.value!)),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            _updateStatus(orderId, value);
-                          }
-                        },
-                        style: TextStyle(
-                          color: _getStatusColor(status),
-                          fontWeight: FontWeight.w500,
+                  subtitle: DropdownButton<String>(
+                    value: status,
+                    underline: const SizedBox(),
+                    items: const [
+                      DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                      DropdownMenuItem(value: "In Progress", child: Text("In Progress")),
+                      DropdownMenuItem(value: "Completed", child: Text("Completed")),
+                      DropdownMenuItem(value: "Rejected", child: Text("Rejected")),
+                    ].map((item) {
+                      return DropdownMenuItem<String>(
+                        value: item.value,
+                        child: Text(
+                          (item.child as Text).data ?? "",
+                          style: TextStyle(color: _getStatusColor(item.value!)),
                         ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        _updateStatus(orderId, value);
+                      }
+                    },
+                    style: TextStyle(
+                      color: _getStatusColor(status),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   children: [
                     ListTile(
@@ -139,7 +134,8 @@ class OrdersScreen extends StatelessWidget {
                                 width: 50,
                                 height: 50,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.error),
                               )
                             : const Icon(Icons.image_not_supported),
                         title: Text(itemName),
