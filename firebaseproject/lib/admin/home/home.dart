@@ -37,7 +37,7 @@ class AdminHomeScreen extends StatelessWidget {
       _AdminOption(
         title: "Manage User Contacts",
         icon: Icons.support_agent_outlined,
-        onTap: () => Get.to(() => ContactsAdminPage()),
+        onTap: () => Get.to(() => ContactsPage()),
       ),
     ];
 

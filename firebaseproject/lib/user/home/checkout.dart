@@ -81,7 +81,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Confirm Order')),
+      appBar: AppBar(title: const Text('Confirm Order'),
+      automaticallyImplyLeading: false,),
       body: Stack(
         children: [
           SingleChildScrollView(

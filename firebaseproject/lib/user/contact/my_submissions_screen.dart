@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:firebaseproject/user/chatbot/chatbot.dart'; // yahan import add kiya
 
 class MySubmissionsScreen extends StatelessWidget {
   const MySubmissionsScreen({super.key});
@@ -29,39 +30,45 @@ class MySubmissionsScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: stream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildShimmerList();
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.inbox_outlined, size: 80),
-                  SizedBox(height: 16),
-                  Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text("Your submitted requests will appear here."),
-                ],
-              ),
-            );
-          }
+      body: Stack(
+        children: [
+          StreamBuilder<QuerySnapshot>(
+            stream: stream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildShimmerList();
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 80),
+                      SizedBox(height: 16),
+                      Text("No Submissions Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 8),
+                      Text("Your submitted requests will appear here."),
+                    ],
+                  ),
+                );
+              }
 
-          final docs = snapshot.data!.docs;
+              final docs = snapshot.data!.docs;
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              return _SubmissionCard(data: data, docId: doc.id);
+              return ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  return _SubmissionCard(data: data, docId: doc.id);
+                },
+              );
             },
-          );
-        },
+          ),
+
+          const ChatBotFloating(), // yahan add kiya jaisy CartScreen me hai
+        ],
       ),
     );
   }

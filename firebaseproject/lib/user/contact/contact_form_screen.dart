@@ -37,11 +37,7 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           'message': _messageController.text,
           'status': 'Pending',
           'timestamp': FieldValue.serverTimestamp(),
-          'email': 'rajeeladmin@gmail.com',
-          'name': 'Rajeel Siddiqui',
-          'phone': '03300644215',
-          'role': 'admin',
-          'uid': '8XWtNimogXQhTtvUcup0USmRSsm1',
+          
         });
         Get.back();
         Get.snackbar('Success', 'Your request has been submitted successfully.');

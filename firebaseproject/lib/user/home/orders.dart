@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebaseproject/user/chatbot/chatbot.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -16,18 +17,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Stream<QuerySnapshot> _getOrders() {
     User? user = _auth.currentUser;
-
     if (user == null) {
       return const Stream.empty();
     }
-
     return _firestore
         .collection("orders")
         .where("userId", isEqualTo: user.uid)
         .snapshots();
   }
 
-  // Define status colors
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Pending':
@@ -166,47 +164,46 @@ class _OrdersScreenState extends State<OrdersScreen> {
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.delayed(const Duration(seconds: 1));
-        },
-        child: StreamBuilder<QuerySnapshot>(
-          stream: _getOrders(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildShimmer();
-            }
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: () async {
+              await Future.delayed(const Duration(seconds: 1));
+            },
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _getOrders(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return _buildShimmer();
+                }
 
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.shopping_bag_outlined, size: 64),
-                    const SizedBox(height: 16),
-                    Text(
-                      "No orders found",
-                      style: Theme.of(context).textTheme.titleLarge,
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.shopping_bag_outlined, size: 64),
+                        const SizedBox(height: 16),
+                        Text("No orders found", style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text("Place your first order to get started!", style: Theme.of(context).textTheme.bodyMedium),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Place your first order to get started!",
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              );
-            }
+                  );
+                }
 
-            final orders = snapshot.data!.docs;
+                final orders = snapshot.data!.docs;
 
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: orders.length,
-              itemBuilder: (context, index) => _buildOrderItem(orders[index]),
-            );
-          },
-        ),
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) => _buildOrderItem(orders[index]),
+                );
+              },
+            ),
+          ),
+          const ChatBotFloating(),
+        ],
       ),
     );
   }

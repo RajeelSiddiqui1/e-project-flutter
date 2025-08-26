@@ -9,6 +9,7 @@ import 'package:firebaseproject/user/home/orders.dart';
 import 'package:firebaseproject/user/home/product_detail.dart';
 import 'package:firebaseproject/user/home/wish_list.dart';
 import 'package:firebaseproject/user/profile/profile.dart';
+import 'package:firebaseproject/user/chatbot/chatbot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
@@ -84,21 +85,29 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: _buildAppBar(),
       bottomNavigationBar: _buildBottomNavBar(),
-      body: RefreshIndicator(
-        onRefresh: () async => setState(() {}),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionHeader('Browse Genres'),
-              _buildCategoriesSection(),
-              _buildSectionHeader('New & Noteworthy'),
-              _buildProductsSection(),
-              _buildAboutCompanySection(),
-              const SizedBox(height: 20),
-            ],
-          ).animate().fadeIn(duration: 500.ms),
-        ),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: () async => setState(() {}),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader('Browse Genres'),
+                  _buildCategoriesSection(),
+                  _buildSectionHeader('New & Noteworthy'),
+                  _buildProductsSection(),
+                  _buildAboutCompanySection(),
+                  const SizedBox(height: 20),
+                ],
+              ).animate().fadeIn(duration: 500.ms),
+            ),
+          ),
+          Positioned(
+           
+            child: const ChatBotFloating(),
+          ),
+        ],
       ),
     );
   }
@@ -125,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ],
-      // Kept transparent for colorless theme
       elevation: 0,
     );
   }
@@ -346,7 +354,7 @@ class _NavButton extends StatelessWidget {
             Icon(
               icon,
               size: 24,
-              color: Colors.grey.shade700, // Replaced Theme-based color
+              color: Colors.grey.shade700,
             ),
             const SizedBox(height: 4),
             Text(
@@ -444,7 +452,7 @@ class _ProductCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Get.to(
-          () => ProductDetailScreen(productId: productId, product: productData),
+          () => ProductDetailScreen(productId: productId, productData: productData, product: productData),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +464,7 @@ class _ProductCard extends StatelessWidget {
                 children: [
                   Container(
                     width: double.infinity,
-                    color: Colors.grey.shade200, // Replaced Colors.grey.shade100
+                    color: Colors.grey.shade200,
                     child: imageUrl != null && imageUrl.isNotEmpty
                         ? Image.network(
                             imageUrl,
@@ -466,14 +474,14 @@ class _ProductCard extends StatelessWidget {
                                 : const Center(
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: Colors.grey, // Grayscale loading
+                                      color: Colors.grey,
                                     ),
                                   ),
                             errorBuilder: (c, e, s) => const Center(
                               child: Icon(
                                 Icons.book_outlined,
                                 size: 50,
-                                color: Colors.grey, // Grayscale icon
+                                color: Colors.grey,
                               ),
                             ),
                           )
@@ -481,7 +489,7 @@ class _ProductCard extends StatelessWidget {
                             child: Icon(
                               Icons.book_outlined,
                               size: 50,
-                              color: Colors.grey, // Grayscale icon
+                              color: Colors.grey,
                             ),
                           ),
                   ),
@@ -495,13 +503,13 @@ class _ProductCard extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade800, // Replaced Colors.black87
+                          color: Colors.red.shade800,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '${discount.toStringAsFixed(0)}% OFF',
                           style: const TextStyle(
-                            color: Colors.white, // Kept white for contrast
+                            color: Colors.white,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -513,7 +521,7 @@ class _ProductCard extends StatelessWidget {
                       isWishlisted ? Icons.favorite : Icons.favorite_border,
                       color: isWishlisted
                           ? Colors.red.shade700
-                          : Colors.white, // Replaced Colors.red
+                          : Colors.white,
                     ),
                     onPressed: onWishlistToggle,
                   ),
@@ -546,7 +554,7 @@ class _ProductCard extends StatelessWidget {
                             '\$${price.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600, // Grayscale
+                              color: Colors.grey.shade600,
                               decoration: TextDecoration.lineThrough,
                             ),
                           ),
@@ -601,7 +609,7 @@ class _ShimmerGrid extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
                   ),
-                  color: Colors.grey.shade200, // Grayscale background
+                  color: Colors.grey.shade200,
                 ),
               ),
             ),
@@ -615,13 +623,13 @@ class _ShimmerGrid extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       height: 16,
-                      color: Colors.grey.shade200, // Grayscale shimmer
+                      color: Colors.grey.shade200,
                     ),
                     const SizedBox(height: 8),
                     Container(
                       width: 60,
                       height: 16,
-                      color: Colors.grey.shade200, // Grayscale shimmer
+                      color: Colors.grey.shade200,
                     ),
                   ],
                 ),
@@ -655,14 +663,14 @@ class _ShimmerList extends StatelessWidget {
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey.shade200, // Grayscale shimmer
+                  color: Colors.grey.shade200,
                 ),
               ),
               const SizedBox(height: 10),
               Container(
                 width: 60,
                 height: 14,
-                color: Colors.grey.shade200, // Grayscale shimmer
+                color: Colors.grey.shade200,
               ),
             ],
           ),
@@ -689,12 +697,10 @@ class CategoryProductsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           categoryTitle,
-          
           style: const TextStyle(fontFamily: 'Georgia'),
         ),
-        automaticallyImplyLeading:false,
+        automaticallyImplyLeading: false,
         elevation: 0,
-        // Kept transparent
       ),
       body: RefreshIndicator(
         onRefresh: () async => Future.delayed(const Duration(seconds: 1)),
@@ -714,7 +720,7 @@ class CategoryProductsScreen extends StatelessWidget {
                     Icon(
                       Icons.book_outlined,
                       size: 64,
-                      color: Colors.grey.shade600, // Grayscale icon
+                      color: Colors.grey.shade600,
                     ),
                     const SizedBox(height: 16),
                     Text(

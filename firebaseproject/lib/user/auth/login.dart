@@ -44,35 +44,33 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> loginWithGoogle() async {
-    try {
-      final UserCredential userCredential = await _auth.signInWithPopup(GoogleAuthProvider());
-      final user = userCredential.user;
-      if (user == null) throw Exception("Google sign in failed");
+Future<void> loginWithGoogle() async {
+  try {
+    final GoogleAuthProvider provider = GoogleAuthProvider();
+    final UserCredential userCredential = await _auth.signInWithPopup(provider); // Or signInWithRedirect if preferred
+    final user = userCredential.user;
+    if (user == null) throw Exception("Google sign in failed");
 
-      final userDoc = FirebaseFirestore.instance.collection("Users").doc(user.uid);
-      final docSnapshot = await userDoc.get();
-      if (!docSnapshot.exists) {
-        final emailQuery = await FirebaseFirestore.instance
-            .collection("Users")
-            .where("email", isEqualTo: user.email)
-            .get();
-
-        if (emailQuery.docs.isEmpty) {
-          await userDoc.set({
-            "name": user.displayName ?? "User",
-            "email": user.email,
-            "createdAt": DateTime.now(),
-          });
-        }
-      }
-
-      Get.offAll(() => const HomeScreen());
-    } catch (e) {
-      Get.snackbar("Google Sign-In Failed", e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+    final userDoc = FirebaseFirestore.instance.collection("Users").doc(user.uid);
+    final docSnapshot = await userDoc.get();
+    if (!docSnapshot.exists) {
+      await userDoc.set({
+        "name": user.displayName ?? "User",
+        "email": user.email,
+        "createdAt": DateTime.now(),
+      });
     }
+    Get.offAll(() => const HomeScreen());
+  } catch (e) {
+    Get.snackbar("Google Sign-In Failed", e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+    if (e is FirebaseAuthException && e.code == 'popup-closed-by-user') {
+      // Handle user canceling the popup
+      return;
+    }
+    // Log out if authentication fails to prevent session conflicts
+    await _auth.signOut();
   }
-
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

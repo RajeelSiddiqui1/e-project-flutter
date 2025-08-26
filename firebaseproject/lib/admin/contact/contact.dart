@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 void main() {
   runApp(MyApp());
@@ -10,25 +9,23 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Admin Contact Manager',
+      title: 'Contact Manager',
       theme: ThemeData(
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: ContactsAdminPage(),
+      home: ContactsPage(),
     );
   }
 }
 
-class ContactsAdminPage extends StatefulWidget {
+class ContactsPage extends StatefulWidget {
   @override
-  _ContactsAdminPageState createState() => _ContactsAdminPageState();
+  _ContactsPageState createState() => _ContactsPageState();
 }
 
-class _ContactsAdminPageState extends State<ContactsAdminPage> {
+class _ContactsPageState extends State<ContactsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final User? user = FirebaseAuth.instance.currentUser;
 
-  // Status options for contacts
   final List<String> statusOptions = [
     'Pending',
     'In Progress',
@@ -40,12 +37,15 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contact Management - Admin Panel'),
+        title: const Text('All Contacts'),
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('contacts').snapshots(),
+        stream: _firestore
+            .collection('contacts')
+            .orderBy('updatedAt', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -67,9 +67,7 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
 
               return ContactCard(
                 contactId: contact.id,
-                name: data['name'] ?? 'No Name',
-                email: data['email'] ?? 'No Email',
-                phone: data['phone'] ?? 'No Phone',
+                email: data['userEmail'] ?? 'No Email',
                 message: data['message'] ?? 'No Message',
                 status: data['status'] ?? 'Pending',
                 statusOptions: statusOptions,
@@ -104,9 +102,7 @@ class _ContactsAdminPageState extends State<ContactsAdminPage> {
 
 class ContactCard extends StatelessWidget {
   final String contactId;
-  final String name;
   final String email;
-  final String phone;
   final String message;
   final String status;
   final List<String> statusOptions;
@@ -115,9 +111,7 @@ class ContactCard extends StatelessWidget {
   const ContactCard({
     Key? key,
     required this.contactId,
-    required this.name,
     required this.email,
-    required this.phone,
     required this.message,
     required this.status,
     required this.statusOptions,
@@ -139,7 +133,7 @@ class ContactCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    name,
+                    email,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -164,10 +158,6 @@ class ContactCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(email, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 4),
-            Text(phone, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 8),
             Text(
               message,
               style: const TextStyle(fontSize: 14),
@@ -191,7 +181,8 @@ class ContactCard extends StatelessWidget {
               decoration: const InputDecoration(
                 labelText: 'Update Status',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               ),
             ),
           ],
